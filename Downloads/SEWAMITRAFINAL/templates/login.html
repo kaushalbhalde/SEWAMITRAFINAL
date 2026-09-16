@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const auth = await checkAuth();
+      if (auth.user) { window.location.href = getDashboardUrl(auth.user.role); return; }
+      document.getElementById('page').innerHTML = `
+        ${renderNavbar()}
+        ${renderLangBar()}
+        <div class="auth-wrap">
+          <div class="auth-card">
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Login to your SEWAMITRA account</p>
+            <form id="loginForm">
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" required placeholder="you@example.com">
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+            <p style="margin-top:16px;text-align:center;font-size:0.85rem;color:var(--neutral-500);">
+              No account? <a href="/register.html" style="color:var(--primary);font-weight:600;">Register</a>
+            </p>
+            <p style="margin-top:8px;text-align:center;font-size:0.8rem;color:var(--neutral-400);">
+              Demo admin: admin@bridge.local / admin123<br>
+              Demo worker: kaushal@bridge.local / demo123
+            </p>
+          </div>
+        </div>
+      `;
+      document.getElementById('loginForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          await API('auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+              email: document.getElementById('email').value,
+              password: document.getElementById('password').value
+            })
+          });
+          toast('Login successful!', 'success');
+          setTimeout(async () => {
+            const auth = await checkAuth();
+            window.location.href = getDashboardUrl(auth.user.role);
+          }, 500);
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

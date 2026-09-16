@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('market');
+      if (!ok) return;
+      const products = await API('products');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="page-title">Marketplace</div>
+          <p class="text-muted mb-16">Products and services from local businesses</p>
+          <div id="productsGrid"></div>
+        </div>
+      `;
+
+      const el = document.getElementById('productsGrid');
+      if (!products.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🏪</div><p>No products available yet.</p></div>';
+        return;
+      }
+      el.innerHTML = `<div class="grid grid-3">` + products.map(p => `
+        <div class="product-card">
+          <div class="product-img">${p.image_url || '📦'}</div>
+          <div class="product-body">
+            <div class="product-name">${p.name}</div>
+            <div class="product-desc">${p.description || ''}</div>
+            <div class="product-price">${fmtMoney(p.price)}</div>
+            <div class="text-sm text-muted">by ${p.business_name}</div>
+            ${currentUser.role !== 'business' ? `
+              <div class="flex-row gap-8 mt-8">
+                <button class="btn btn-sm btn-primary" onclick="orderProduct(${p.id}, '${p.name.replace(/'/g, '')}')">Order</button>
+                <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('') + `</div>`;
+    })();
+
+    async function orderProduct(pid, name) {
+      const qty = prompt('How many ' + name + '?', '1');
+      if (!qty) return;
+      try {
+        const res = await API('products/' + pid + '/order', {
+          method: 'POST',
+          body: JSON.stringify({ quantity: parseInt(qty) })
+        });
+        toast('Order placed! Total: ' + fmtMoney(res.total), 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

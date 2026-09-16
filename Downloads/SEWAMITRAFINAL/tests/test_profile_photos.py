@@ -1,0 +1,82 @@
+import os
+import tempfile
+import unittest
+
+import app as app_module
+
+
+class WorkerProfilePhotoTests(unittest.TestCase):
+    def setUp(self):
+        fd, temp_db = tempfile.mkstemp(suffix='.db')
+        os.close(fd)
+        app_module.DB_PATH = temp_db
+        app_module.init_db()
+
+    def tearDown(self):
+        try:
+            conn = app_module.get_db()
+            conn.close()
+        except Exception:
+            pass
+        try:
+            if os.path.exists(app_module.DB_PATH):
+                os.remove(app_module.DB_PATH)
+        except PermissionError:
+            pass
+
+    def test_worker_profile_supports_previous_work_photos(self):
+        conn = app_module.get_db()
+        info = conn.execute('PRAGMA table_info(worker_profiles)').fetchall()
+        columns = [row[1] for row in info]
+        self.assertIn('previous_work_photos', columns)
+
+        with app_module.app.test_client() as client:
+            conn = app_module.get_db()
+            user = conn.execute("SELECT id FROM users WHERE email = 'worker1@bridge.local'").fetchone()
+            conn.close()
+            with client.session_transaction() as sess:
+                sess['user_id'] = user['id']
+
+            resp = client.put('/api/profile', json={
+                'name': 'Arjun Electrician',
+                'phone': '9876500002',
+                'address': 'Ulsoor, Bengaluru',
+                'bio': 'Updated bio',
+                'skills': 'Electrical,Repair/Maintenance',
+                'hourly_rate': 500,
+                'daily_rate': 3000,
+                'portfolio': 'Past electrical jobs',
+                'previous_work_photos': ['/static/uploads/work/1.jpg', '/static/uploads/work/2.jpg']
+            })
+            self.assertEqual(resp.status_code, 200)
+
+            profile_resp = client.get(f"/api/profile/{user['id']}")
+            self.assertEqual(profile_resp.status_code, 200)
+            payload = profile_resp.get_json()
+            self.assertEqual(payload['worker_profile']['previous_work_photos'], ['/static/uploads/work/1.jpg', '/static/uploads/work/2.jpg'])
+
+    def test_public_profile_view_does_not_require_login(self):
+        with app_module.app.test_client() as client:
+            user = client.application.config.get('TEST_USER_ID')
+            if user is None:
+                conn = app_module.get_db()
+                user = conn.execute("SELECT id FROM users WHERE email = 'worker1@bridge.local'").fetchone()['id']
+                conn.close()
+            resp = client.get(f'/api/profile/{user}')
+            self.assertEqual(resp.status_code, 200)
+
+    def test_demo_kaushal_worker_profile_is_seeded(self):
+        conn = app_module.get_db()
+        user = conn.execute("SELECT * FROM users WHERE email = 'kaushal@bridge.local'").fetchone()
+        self.assertIsNotNone(user)
+        self.assertEqual(user['role'], 'worker')
+        self.assertEqual(user['name'], 'Kaushal')
+        profile = conn.execute("SELECT * FROM worker_profiles WHERE user_id = ?", (user['id'],)).fetchone()
+        self.assertIsNotNone(profile)
+        self.assertIn('Cooking', profile['skills'])
+        self.assertIn('/static/uploads/previous-work/kaushal-cooking-sample.svg', profile['previous_work_photos'])
+        conn.close()
+
+
+if __name__ == '__main__':
+    unittest.main()

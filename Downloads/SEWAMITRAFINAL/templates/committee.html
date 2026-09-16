@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worker Committee - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let reports = [];
+    (async function() {
+      const ok = await initPage('committee', ['worker', 'admin']);
+      if (!ok) return;
+
+      reports = await API('committee');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="page-title">Worker Committee</div>
+          <div class="card mb-16" style="border-left:4px solid var(--secondary);">
+            <p>The Worker Committee is a community where workers support each other and report misconduct. Reports are visible to all workers for transparency.</p>
+          </div>
+
+          <button class="btn btn-primary mb-16" onclick="openReportModal()">+ Report an Issue</button>
+
+          <h3 class="card-title mb-16">Community Reports</h3>
+          <div id="reportsList"></div>
+        </div>
+
+        <div class="modal-overlay" id="reportModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('reportModal')">&times;</button>
+            <h2>Report Misconduct</h2>
+            <form id="reportForm">
+              <div class="form-group"><label>Reported User ID (optional)</label><input type="number" id="reportedId" placeholder="User ID"></div>
+              <div class="form-group"><label>Description</label><textarea id="reportDesc" required placeholder="Describe what happened..."></textarea></div>
+              <button type="submit" class="btn btn-primary btn-block">Submit Report</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="respondModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('respondModal')">&times;</button>
+            <h2>Respond to Report</h2>
+            <form id="respondForm">
+              <div class="form-group"><label>Your Response</label><textarea id="responseText" required placeholder="Offer support or guidance..."></textarea></div>
+              <button type="submit" class="btn btn-primary btn-block">Submit Response</button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      renderReports();
+    })();
+
+    function renderReports() {
+      const el = document.getElementById('reportsList');
+      if (!reports.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🤝</div><p>No reports yet. The committee is here to support workers.</p></div>';
+        return;
+      }
+      el.innerHTML = reports.map(r => `
+        <div class="card">
+          <div class="flex-between">
+            <div>
+              <strong>Reported by ${r.reporter_name}</strong>
+              ${r.reported_name ? `<span class="text-sm text-muted"> | About: ${r.reported_name}</span>` : ''}
+              <p class="mt-8">${r.description}</p>
+              ${r.response ? `<div class="mt-8" style="padding:8px;background:var(--neutral-50);border-radius:6px;"><strong>Response:</strong> ${r.response}</div>` : ''}
+              <p class="text-sm text-muted mt-8">${fmtDate(r.created_at)} | ${statusBadge(r.status)}</p>
+            </div>
+            <div>
+              ${r.status === 'open' ? `<button class="btn btn-sm btn-secondary" onclick="openRespondModal(${r.id})">Respond</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let currentReportId = null;
+    function openRespondModal(rid) {
+      currentReportId = rid;
+      document.getElementById('respondModal').classList.add('active');
+    }
+
+    function openReportModal() { document.getElementById('reportModal').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id === 'reportForm') {
+        e.preventDefault();
+        try {
+          await API('committee', {
+            method: 'POST',
+            body: JSON.stringify({
+              reported_id: parseInt(document.getElementById('reportedId').value) || null,
+              description: document.getElementById('reportDesc').value
+            })
+          });
+          toast('Report submitted to committee.', 'success');
+          closeModal('reportModal');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) { toast(err.message, 'error'); }
+      }
+
+      if (e.target.id === 'respondForm') {
+        e.preventDefault();
+        try {
+          await API('committee/' + currentReportId + '/respond', {
+            method: 'POST',
+            body: JSON.stringify({ response: document.getElementById('responseText').value })
+          });
+          toast('Response recorded.', 'success');
+          closeModal('respondModal');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
+  </script>
+</body>
+</html>

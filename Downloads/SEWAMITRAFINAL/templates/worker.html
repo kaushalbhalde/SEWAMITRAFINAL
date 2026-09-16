@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worker Dashboard - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('dashboard', ['worker']);
+      if (!ok) return;
+      const me = await API('auth/me');
+      const walletRes = await API('wallet');
+      const appsRes = await API('applications/my');
+      const assignmentsRes = await API('assignments');
+      const activeAssignments = assignmentsRes.filter(a => a.status === 'in_progress' || a.status === 'pending_completion');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="dash-header">
+            <div>
+              <h2>Welcome, ${currentUser.name}</h2>
+              <div class="role-tag">Worker Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
+            </div>
+            <button class="btn btn-primary" onclick="window.location.href='/jobs.html'">Find Jobs</button>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${appsRes.length}</div><div class="stat-label">Applications</div></div>
+            <div class="stat-card"><div class="stat-value">${activeAssignments.length}</div><div class="stat-label">Active Jobs</div></div>
+            <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Wallet Balance</div></div>
+            <div class="stat-card"><div class="stat-value">${me.worker_profile?.hourly_rate ? fmtMoney(me.worker_profile.hourly_rate) : '-'}</div><div class="stat-label">Hourly Rate</div></div>
+          </div>
+
+          ${me.worker_profile ? `
+          <div class="card mb-16">
+            <h3 class="card-title">Your Skills</h3>
+            <div>${(me.worker_profile.skills || '').split(',').filter(s => s).map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
+            <p class="text-sm text-muted mt-8">Daily Rate: ${me.worker_profile.daily_rate ? fmtMoney(me.worker_profile.daily_rate) : 'Not set'} | Availability: ${me.worker_profile.availability ? 'Available' : 'Unavailable'}</p>
+          </div>` : ''}
+
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('apps')">My Applications</div>
+            <div class="tab" onclick="switchTab('assignments')">Active Jobs</div>
+            <div class="tab" onclick="switchTab('wallet')">Wallet</div>
+          </div>
+
+          <div id="tab-apps" class="tab-content active">
+            <div id="appsList"></div>
+          </div>
+          <div id="tab-assignments" class="tab-content">
+            <div id="assignmentsList"></div>
+          </div>
+          <div id="tab-wallet" class="tab-content">
+            <div id="walletContent"></div>
+          </div>
+        </div>
+      `;
+
+      renderApps();
+      renderAssignments();
+      renderWallet();
+
+      function renderApps() {
+        const el = document.getElementById('appsList');
+        if (!appsRes.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No applications yet. <a href="/jobs.html" style="color:var(--primary);">Browse jobs</a> to apply.</p></div>';
+          return;
+        }
+        el.innerHTML = appsRes.map(a => `
+          <div class="card job-item">
+            <div class="flex-between">
+              <div>
+                <h3>${a.job_title}</h3>
+                <div class="job-meta">
+                  <span>👤 ${a.customer_name}</span>
+                  <span>📂 ${a.category}</span>
+                  <span>${statusBadge(a.status)}</span>
+                </div>
+                <p class="text-sm text-muted">Your offer: ${a.proposed_price ? fmtMoney(a.proposed_price) + ' (' + a.price_type + ')' : 'Negotiable'}</p>
+                ${a.message ? `<p class="text-sm text-muted">"${a.message}"</p>` : ''}
+              </div>
+              <div>
+                ${a.status === 'pending' ? `<button class="btn btn-sm btn-secondary" onclick="window.location.href='/job-detail.html?id=${a.job_id}'">View Job</button>` : ''}
+                ${a.status === 'accepted' ? `<span class="badge badge-open">Accepted!</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderAssignments() {
+        const el = document.getElementById('assignmentsList');
+        if (!activeAssignments.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No active jobs.</p></div>';
+          return;
+        }
+        el.innerHTML = activeAssignments.map(a => `
+          <div class="card job-item" style="border-left-color:var(--warning);">
+            <div class="flex-between">
+              <div>
+                <h3>${a.job_title}</h3>
+                <div class="job-meta">
+                  <span>👤 ${a.customer_name}</span>
+                  <span>${statusBadge(a.status)}</span>
+                  <span>${fmtMoney(a.agreed_price)} (${a.price_type})</span>
+                </div>
+                ${a.status === 'in_progress' ? '<p class="text-sm text-muted">Mark as done when you finish the work.</p>' : ''}
+                ${a.status === 'pending_completion' ? '<p class="text-sm" style="color:var(--warning);">Waiting for customer to confirm and release payment</p>' : ''}
+              </div>
+              <div>
+                ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-success" onclick="markDone(${a.id})">Mark as Done</button>` : ''}
+                <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${a.customer_id}'">Message</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderWallet() {
+        document.getElementById('walletContent').innerHTML = `
+          <div class="card">
+            <div class="grid grid-2">
+              <div><div class="text-sm text-muted">Available Balance</div><div style="font-size:1.5rem;font-weight:700;color:var(--success);">${fmtMoney(walletRes.wallet.balance)}</div></div>
+              <div><div class="text-sm text-muted">Held</div><div style="font-size:1.5rem;font-weight:700;color:var(--warning);">${fmtMoney(walletRes.wallet.held_balance)}</div></div>
+            </div>
+            <div class="flex-row gap-8 mt-16">
+              <button class="btn btn-primary btn-sm" onclick="withdrawMoney()">Withdraw</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Recent Transactions</h3>
+            ${walletRes.transactions.length ? `
+            <div class="table-wrap"><table>
+              <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th></tr>
+              ${walletRes.transactions.map(t => `<tr>
+                <td>${fmtDate(t.created_at)}</td><td>${t.type}</td><td>${t.description}</td>
+                <td style="font-weight:600;color:${t.type === 'release' || t.type === 'deposit' ? 'var(--success)' : 'var(--error)'};">${t.type === 'release' || t.type === 'deposit' ? '+' : '-'}${fmtMoney(t.amount)}</td>
+              </tr>`).join('')}
+            </table></div>` : '<p class="text-muted text-sm">No transactions yet.</p>'}
+          </div>
+        `;
+      }
+    })();
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    async function markDone(assignmentId) {
+      if (!confirm('Mark this job as done? The customer will need to confirm to release payment.')) return;
+      try {
+        await API('assignments/' + assignmentId + '/complete', { method: 'POST' });
+        toast('Marked as done! Waiting for customer confirmation.', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function withdrawMoney() {
+      const amt = prompt('Enter amount to withdraw (simulated):', '100');
+      if (!amt) return;
+      try {
+        await API('wallet/withdraw', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amt) }) });
+        toast('Withdrawal successful (simulated)', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  </script>
+</body>
+</html>
