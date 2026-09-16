@@ -1117,10 +1117,58 @@ tr:hover { background: var(--neutral-50); }
 .product-card .product-desc { font-size: 0.8rem; color: var(--neutral-500); margin: 4px 0; }
 
 @media (max-width: 640px) {
-  .navbar { padding: 0 12px; }
-  .navbar-links { gap: 0; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .navbar {
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    gap: 6px;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .navbar-brand { flex: 0 0 auto; }
+  .navbar-links {
+    flex: 1 1 100%;
+    min-width: 0;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
   .navbar-links a, .navbar-links button { padding: 8px 10px; font-size: 0.8rem; }
-  .container { padding: 16px 12px; }
+  .container { width: 100%; padding: 16px 12px; }
   .auth-card { padding: 24px; }
   .role-selector { grid-template-columns: 1fr; }
+  .auth-wrap > div { max-width: 100%; min-width: 0; }
+  .auth-wrap > div[style*="grid-template-columns"] {
+    width: 100%;
+    grid-template-columns: 1fr !important;
+  }
+  .auth-wrap p, .auth-wrap h1, .auth-wrap h3 { overflow-wrap: anywhere; }
+  .lang-bar { flex-wrap: wrap; padding: 8px 12px; }
+  .lang-bar strong { flex: 0 0 auto; }
+  .lang-bar input { flex: 1 1 140px; min-width: 0; }
+  .dash-header, .card { padding: 16px; }
+  .dash-header > *, .flex-between > * { min-width: 0; }
+  .flex-between { gap: 10px; flex-wrap: wrap; }
+  .flex-row { flex-wrap: wrap; }
+  .job-meta { flex-wrap: wrap; gap: 6px 10px; }
+  .job-item .flex-between { align-items: flex-start; }
+  .job-item .text-right { width: 100%; text-align: left; }
+  .job-item .text-right .job-budget { display: inline-block; margin-right: 8px; }
+  .profile-single-card { padding: 14px 12px 12px; }
+  .profile-main-info { min-width: 0; }
+  .profile-main-info > div:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .profile-actions { width: 100%; }
+  .profile-actions .btn { flex: 1 1 auto; }
+  .message-bubble { max-width: 88%; overflow-wrap: anywhere; }
+  .modal { padding: 20px 16px; }
+  .chatbot-panel { right: 12px; bottom: 76px; }
+  .toast { width: calc(100vw - 24px); text-align: center; padding: 10px 14px; }
+  .table-wrap { max-width: 100%; }
+  .table-wrap table { min-width: 620px; }
+  .map-notice { overflow-wrap: anywhere; }
+  .map-job-content h4, .product-card .product-name { overflow-wrap: anywhere; }
+  .messages-page-grid,
+  .grid[style*="grid-template-columns:280px"] { grid-template-columns: 1fr !important; }
+  .team-member-row { grid-template-columns: 1fr !important; }
 }
