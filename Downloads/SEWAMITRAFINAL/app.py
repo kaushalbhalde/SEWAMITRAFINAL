@@ -968,6 +968,20 @@ def accept_application(app_id):
     agreed_price = data.get('agreed_price', app_row['proposed_price'])
     price_type = data.get('price_type', app_row['price_type'])
 
+    try:
+        agreed_price = float(agreed_price)
+    except (TypeError, ValueError):
+        conn.close()
+        return jsonify({'error': 'A valid agreed payment amount is required'}), 400
+    if agreed_price <= 0:
+        conn.close()
+        return jsonify({'error': 'The agreed payment amount must be greater than zero'}), 400
+
+    wallet = c.execute('SELECT balance FROM wallets WHERE user_id = ?', (session['user_id'],)).fetchone()
+    if not wallet or wallet['balance'] < agreed_price:
+        conn.close()
+        return jsonify({'error': 'Insufficient job payment wallet balance. Deposit funds before accepting this application.'}), 400
+
     # Create assignment
     c.execute(
         '''INSERT INTO job_assignments (job_id, worker_id, group_id, agreed_price, price_type, status)
@@ -981,17 +995,15 @@ def accept_application(app_id):
     c.execute('UPDATE job_applications SET status = ? WHERE id = ?', ('accepted', app_id))
 
     # Hold payment from customer wallet
-    wallet = c.execute('SELECT balance FROM wallets WHERE user_id = ?', (session['user_id'],)).fetchone()
-    if wallet and wallet['balance'] >= agreed_price:
-        c.execute(
-            'UPDATE wallets SET balance = balance - ?, held_balance = held_balance + ? WHERE user_id = ?',
-            (agreed_price, agreed_price, session['user_id'])
-        )
-        c.execute(
-            '''INSERT INTO transactions (user_id, amount, type, description, status, related_job_id)
-               VALUES (?,?, 'hold', 'Payment held for job', 'completed', ?)''',
-            (session['user_id'], agreed_price, job['id'])
-        )
+    c.execute(
+        'UPDATE wallets SET balance = balance - ?, held_balance = held_balance + ? WHERE user_id = ?',
+        (agreed_price, agreed_price, session['user_id'])
+    )
+    c.execute(
+        '''INSERT INTO transactions (user_id, amount, type, description, status, related_job_id)
+           VALUES (?,?, 'hold', 'Payment held for job', 'completed', ?)''',
+        (session['user_id'], agreed_price, job['id'])
+    )
 
     conn.commit()
     conn.close()
@@ -1084,6 +1096,9 @@ def complete_assignment(assignment_id):
 
     # Customer confirms completion -> release payment
     if user['role'] == 'customer' and job['customer_id'] == user['id']:
+        if assignment['status'] != 'pending_completion':
+            conn.close()
+            return jsonify({'error': 'The worker must mark the job as completed before approval'}), 400
         c.execute(
             "UPDATE job_assignments SET status = 'completed', completed_at = datetime('now') WHERE id = ?",
             (assignment_id,)
@@ -1112,6 +1127,9 @@ def complete_assignment(assignment_id):
 
     # Worker marks as done -> pending customer confirmation
     if user['id'] == assignment['worker_id']:
+        if assignment['status'] != 'in_progress':
+            conn.close()
+            return jsonify({'error': 'This assignment is no longer in progress'}), 400
         c.execute("UPDATE job_assignments SET status = 'pending_completion' WHERE id = ?", (assignment_id,))
         conn.commit()
         conn.close()

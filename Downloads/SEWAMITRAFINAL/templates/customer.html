@@ -37,13 +37,13 @@
             <div class="stat-card"><div class="stat-value">${myJobs.length}</div><div class="stat-label">Total Jobs</div></div>
             <div class="stat-card"><div class="stat-value">${myJobs.filter(j => j.status === 'open').length}</div><div class="stat-label">Open Jobs</div></div>
             <div class="stat-card"><div class="stat-value">${activeAssignments.length}</div><div class="stat-label">Active</div></div>
-            <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Wallet Balance</div></div>
+            <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Job Payment Balance</div></div>
           </div>
 
           <div class="tabs">
             <div class="tab active" onclick="switchTab('myJobs')">My Jobs</div>
             <div class="tab" onclick="switchTab('assignments')">Active Assignments</div>
-            <div class="tab" onclick="switchTab('wallet')">Wallet</div>
+            <div class="tab" onclick="switchTab('jobPayments')">Job Payments</div>
           </div>
 
           <div id="tab-myJobs" class="tab-content active">
@@ -52,8 +52,8 @@
           <div id="tab-assignments" class="tab-content">
             <div id="assignmentsList"></div>
           </div>
-          <div id="tab-wallet" class="tab-content">
-            <div id="walletContent"></div>
+          <div id="tab-jobPayments" class="tab-content">
+            <div id="jobPaymentWalletContent"></div>
           </div>
         </div>
 
@@ -108,7 +108,7 @@
 
       renderJobs();
       renderAssignments();
-      renderWallet(walletRes);
+      renderJobPaymentWallet(walletRes);
 
       async function renderJobs() {
         const el = document.getElementById('jobsList');
@@ -165,21 +165,20 @@
         `).join('');
       }
 
-      function renderWallet(w) {
-        document.getElementById('walletContent').innerHTML = `
+      function renderJobPaymentWallet(w) {
+        document.getElementById('jobPaymentWalletContent').innerHTML = `
           <div class="card">
             <div class="grid grid-3">
-              <div><div class="text-sm text-muted">Available Balance</div><div style="font-size:1.5rem;font-weight:700;color:var(--success);">${fmtMoney(w.wallet.balance)}</div></div>
-              <div><div class="text-sm text-muted">Held (in jobs)</div><div style="font-size:1.5rem;font-weight:700;color:var(--warning);">${fmtMoney(w.wallet.held_balance)}</div></div>
+              <div><div class="text-sm text-muted">Available for Job Payments</div><div style="font-size:1.5rem;font-weight:700;color:var(--success);">${fmtMoney(w.wallet.balance)}</div></div>
+              <div><div class="text-sm text-muted">Reserved Until Approval</div><div style="font-size:1.5rem;font-weight:700;color:var(--warning);">${fmtMoney(w.wallet.held_balance)}</div></div>
               <div></div>
             </div>
             <div class="flex-row gap-8 mt-16">
-              <button class="btn btn-primary btn-sm" onclick="openDepositModal()">Add Money</button>
-              <button class="btn btn-secondary btn-sm" onclick="openWithdrawModal()">Withdraw</button>
+              <button class="btn btn-primary btn-sm" onclick="openDepositModal()">Deposit for a Job</button>
             </div>
           </div>
           <div class="card">
-            <h3 class="card-title">Recent Transactions</h3>
+            <h3 class="card-title">Job Payment Activity</h3>
             ${w.transactions.length ? `
             <div class="table-wrap"><table>
               <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th></tr>
