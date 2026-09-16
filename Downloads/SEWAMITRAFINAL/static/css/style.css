@@ -731,6 +731,72 @@ body.dark-theme tr:hover { background: rgba(148, 163, 184, 0.08); }
   margin-top: 4px;
 }
 
+.job-payment-feature {
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 58%, #164e63 100%);
+  color: white;
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 14px 30px rgba(15, 118, 110, 0.22);
+}
+
+.job-payment-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.job-payment-eyebrow {
+  display: inline-block;
+  color: #99f6e4;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.job-payment-feature h2 { font-size: 1.6rem; margin-bottom: 6px; }
+.job-payment-feature p { max-width: 680px; color: #ccfbf1; font-size: 0.9rem; }
+
+.job-payment-icon {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 16px;
+  color: #fef3c7;
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.12);
+}
+
+.job-payment-balances {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0 18px;
+}
+
+.job-payment-balances > div {
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+}
+
+.job-payment-balances span { display: block; color: #ccfbf1; font-size: 0.76rem; }
+.job-payment-balances strong { display: block; margin-top: 6px; font-size: 1.45rem; }
+.job-payment-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.job-payment-actions .btn-secondary { background: rgba(255,255,255,0.16); color: white; }
+.job-payment-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 22px; color: #ccfbf1; font-size: 0.78rem; }
+.job-payment-steps span { display: inline-flex; align-items: center; gap: 5px; }
+.job-payment-steps b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #fef3c7; color: #115e59; }
+.job-payment-steps i { opacity: 0.65; font-style: normal; }
+
 /* ---------- Job list ---------- */
 .job-item {
   border-left: 4px solid var(--primary);
@@ -1148,6 +1214,13 @@ tr:hover { background: var(--neutral-50); }
   .lang-bar strong { flex: 0 0 auto; }
   .lang-bar input { flex: 1 1 140px; min-width: 0; }
   .dash-header, .card { padding: 16px; }
+  .job-payment-feature { padding: 20px 16px; border-radius: 14px; }
+  .job-payment-heading { gap: 12px; }
+  .job-payment-feature h2 { font-size: 1.35rem; }
+  .job-payment-balances { grid-template-columns: 1fr; margin: 18px 0 14px; }
+  .job-payment-balances > div { padding: 12px; }
+  .job-payment-steps { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .job-payment-steps i { display: none; }
   .dash-header > *, .flex-between > * { min-width: 0; }
   .flex-between { gap: 10px; flex-wrap: wrap; }
   .flex-row { flex-wrap: wrap; }

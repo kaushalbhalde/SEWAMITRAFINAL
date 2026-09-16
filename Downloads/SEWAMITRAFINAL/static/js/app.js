@@ -2,30 +2,43 @@
 const TRANSLATIONS = window.SEWAMITRA_TRANSLATIONS || { en: {} };
 const SUPPORTED_LANGUAGES = window.SEWAMITRA_LANGUAGES || ['en'];
 let currentLanguage = localStorage.getItem('sewamitra-language') || 'en';
+const originalPageTitle = document.title;
 const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
 
 function t(key, vars = {}) {
   const source = String(key);
-  let value = TRANSLATIONS[currentLanguage]?.[source] || TRANSLATIONS.en?.[source] || source;
+  let value = translateUiValue(source);
   Object.keys(vars).forEach(name => { value = value.replaceAll(`{${name}}`, vars[name]); });
   return value;
+}
+
+function translateUiValue(source) {
+  let value = TRANSLATIONS[currentLanguage]?.[source] || TRANSLATIONS.en?.[source] || source;
+  const dictionary = TRANSLATIONS[currentLanguage] || {};
+  Object.keys(dictionary).sort((a, b) => b.length - a.length).forEach(key => {
+    value = value.split(key).join(dictionary[key]);
+  });
+  return translateUiWords(value);
+}
+
+function translateUiWords(value) {
+  const tokens = window.SEWAMITRA_TOKEN_TRANSLATIONS?.[currentLanguage] || {};
+  if (!Object.keys(tokens).length) return value;
+  return value.replace(/\b[A-Za-z][A-Za-z/&-]*\b/g, word => tokens[word.toLowerCase()] || word);
 }
 
 function translateTextNode(node) {
   if (!node.nodeValue.trim()) return;
   if (!originalText.has(node)) originalText.set(node, node.nodeValue);
-  let translated = originalText.get(node);
+  const translated = originalText.get(node);
   const dictionary = TRANSLATIONS[currentLanguage] || {};
   const trimmed = translated.trim();
   if (dictionary[trimmed]) {
     node.nodeValue = translated.replace(trimmed, dictionary[trimmed]);
     return;
   }
-  Object.keys(dictionary).sort((a, b) => b.length - a.length).forEach(key => {
-    translated = translated.split(key).join(dictionary[key]);
-  });
-  node.nodeValue = translated;
+  node.nodeValue = translateUiValue(translated);
 }
 
 function translateElement(element) {
@@ -34,7 +47,6 @@ function translateElement(element) {
     element.value = currentLanguage;
     return;
   }
-  if (element.matches?.('#langInput')) return;
   const attrs = ['placeholder', 'title', 'aria-label'];
   if (!originalAttributes.has(element)) originalAttributes.set(element, {});
   const saved = originalAttributes.get(element);
@@ -59,7 +71,7 @@ function applyLanguage(language) {
   if (select) select.value = currentLanguage;
   translateElement(document.body);
   const title = document.querySelector('title');
-  if (title) title.textContent = t(title.textContent);
+  if (title) title.textContent = t(originalPageTitle);
   document.dispatchEvent(new CustomEvent('languagechange', { detail: currentLanguage }));
 }
 

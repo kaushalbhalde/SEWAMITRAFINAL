@@ -1179,6 +1179,35 @@ def deposit():
     return jsonify({'message': 'Deposit successful (simulated)'})
 
 
+@app.route('/api/wallet/demo-deposit/remove', methods=['POST'])
+@login_required
+@role_required('customer')
+def remove_demo_deposit():
+    conn = get_db()
+    c = conn.cursor()
+    deposit_txn = c.execute(
+        '''SELECT id, amount FROM transactions
+           WHERE user_id = ? AND type = 'deposit'
+             AND description = 'Demo deposit (simulated payment)'
+           ORDER BY id DESC LIMIT 1''',
+        (session['user_id'],)
+    ).fetchone()
+    if not deposit_txn:
+        conn.close()
+        return jsonify({'error': 'No removable demo deposit found'}), 404
+
+    wallet = c.execute('SELECT balance FROM wallets WHERE user_id = ?', (session['user_id'],)).fetchone()
+    if not wallet or wallet['balance'] < deposit_txn['amount']:
+        conn.close()
+        return jsonify({'error': 'This deposit is reserved for a job and cannot be removed'}), 400
+
+    c.execute('UPDATE wallets SET balance = balance - ? WHERE user_id = ?', (deposit_txn['amount'], session['user_id']))
+    c.execute('DELETE FROM transactions WHERE id = ?', (deposit_txn['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Demo deposit removed'})
+
+
 @app.route('/api/wallet/withdraw', methods=['POST'])
 @login_required
 def withdraw():

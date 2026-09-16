@@ -40,10 +40,12 @@
             <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Job Payment Balance</div></div>
           </div>
 
+          <section id="jobPaymentFeature"></section>
+
           <div class="tabs">
             <div class="tab active" onclick="switchTab('myJobs')">My Jobs</div>
             <div class="tab" onclick="switchTab('assignments')">Active Assignments</div>
-            <div class="tab" onclick="switchTab('jobPayments')">Job Payments</div>
+            <div class="tab" onclick="switchTab('jobPayments')">Payment Activity</div>
           </div>
 
           <div id="tab-myJobs" class="tab-content active">
@@ -166,18 +168,32 @@
       }
 
       function renderJobPaymentWallet(w) {
-        document.getElementById('jobPaymentWalletContent').innerHTML = `
-          <div class="card">
-            <div class="grid grid-3">
-              <div><div class="text-sm text-muted">Available for Job Payments</div><div style="font-size:1.5rem;font-weight:700;color:var(--success);">${fmtMoney(w.wallet.balance)}</div></div>
-              <div><div class="text-sm text-muted">Reserved Until Approval</div><div style="font-size:1.5rem;font-weight:700;color:var(--warning);">${fmtMoney(w.wallet.held_balance)}</div></div>
-              <div></div>
+        const hasDemoDeposit = w.transactions.some(t => t.type === 'deposit' && t.description === 'Demo deposit (simulated payment)');
+        document.getElementById('jobPaymentFeature').innerHTML = `
+          <section class="job-payment-feature">
+            <div class="job-payment-heading">
+              <div>
+                <span class="job-payment-eyebrow">Secure job escrow</span>
+                <h2>Job Payment Wallet</h2>
+                <p>Deposit money before accepting a job. The agreed amount stays reserved until you approve the completed work, then it moves to the worker's wallet.</p>
+              </div>
+              <div class="job-payment-icon">₹</div>
             </div>
-            <div class="flex-row gap-8 mt-16">
-              <button class="btn btn-primary btn-sm" onclick="openDepositModal()">Deposit for a Job</button>
+            <div class="job-payment-balances">
+              <div><span>Available for Job Payments</span><strong>${fmtMoney(w.wallet.balance)}</strong></div>
+              <div><span>Reserved Until Approval</span><strong>${fmtMoney(w.wallet.held_balance)}</strong></div>
+              <div><span>Total Protected</span><strong>${fmtMoney(Number(w.wallet.balance || 0) + Number(w.wallet.held_balance || 0))}</strong></div>
             </div>
-          </div>
-          <div class="card">
+            <div class="job-payment-actions">
+              <button class="btn btn-primary" onclick="openDepositModal()">Deposit for a Job</button>
+              ${hasDemoDeposit ? '<button class="btn btn-secondary" onclick="removeDemoDeposit()">Remove Demo Deposit</button>' : ''}
+            </div>
+            <div class="job-payment-steps">
+              <span><b>1</b> Deposit</span><i>→</i><span><b>2</b> Work completed</span><i>→</i><span><b>3</b> Approve</span><i>→</i><span><b>4</b> Worker paid</span>
+            </div>
+          </section>
+        `;
+        document.getElementById('jobPaymentWalletContent').innerHTML = `<div class="card">
             <h3 class="card-title">Job Payment Activity</h3>
             ${w.transactions.length ? `
             <div class="table-wrap"><table>
@@ -191,8 +207,7 @@
                 </td>
               </tr>`).join('')}
             </table></div>` : '<p class="text-muted text-sm">No transactions yet.</p>'}
-          </div>
-        `;
+          </div>`;
       }
     })();
 
@@ -247,6 +262,15 @@
         await API('wallet/deposit', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amt) }) });
         toast('Deposit successful (simulated)', 'success');
         setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function removeDemoDeposit() {
+      if (!confirm('Remove the latest demo deposit from the job payment wallet?')) return;
+      try {
+        await API('wallet/demo-deposit/remove', { method: 'POST' });
+        toast('Demo deposit removed.', 'success');
+        setTimeout(() => window.location.reload(), 500);
       } catch (e) { toast(e.message, 'error'); }
     }
 
