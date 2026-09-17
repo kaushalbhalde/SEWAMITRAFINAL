@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEWAMITRA - Connecting Customers & Workers</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="landing"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const auth = await checkAuth();
+      if (auth.user) {
+        window.location.href = getDashboardUrl(auth.user.role);
+        return;
+      }
+      document.getElementById('landing').innerHTML = `
+        <div class="landing-page">
+          <div class="landing-slideshow" aria-hidden="true">
+            <div class="landing-slide is-active" style="background-image:url('/static/uploads/previous-work/4843692fdb0f1d66_ChatGPT%20Image%20Sep%2011,%202026,%2002_31_24%20AM.png');"></div>
+            <div class="landing-slide" style="background-image:url('/static/uploads/previous-work/83abb1afc6c28573_ChatGPT%20Image%20Sep%2011,%202026,%2002_39_09%20AM.png');"></div>
+            <div class="landing-slide" style="background-image:url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg');"></div>
+          </div>
+          ${renderNavbar()}
+          ${renderLangBar()}
+        <div class="auth-wrap" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;padding:40px 20px;">
+          <h1 style="font-size:3rem;margin-bottom:12px;">SEWAMITRA<span style="color:var(--accent);">.</span></h1>
+          <p style="font-size:1.2rem;margin-bottom:8px;opacity:0.9;">Connecting customers with local workers</p>
+          <p style="opacity:0.7;margin-bottom:32px;max-width:500px;">Find trusted workers for any job, or offer your skills to your community. Safe, simple, and local.</p>
+          <div style="display:flex;gap:12px;">
+            <a href="/login.html" class="btn btn-primary" style="font-size:1rem;padding:14px 32px;">Login</a>
+            <a href="/register.html" class="btn btn-secondary" style="font-size:1rem;padding:14px 32px;">Get Started</a>
+          </div>
+          <div style="margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;max-width:800px;">
+            <div style="text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:8px;">🔧</div>
+              <h3 style="margin-bottom:4px;">Any Job, Any Skill</h3>
+              <p style="font-size:0.85rem;opacity:0.7;">From plumbing to tutoring, find the right person.</p>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:8px;">🛡️</div>
+              <h3 style="margin-bottom:4px;">Safe & Verified</h3>
+              <p style="font-size:0.85rem;opacity:0.7;">ID verification, SOS button, and dispute resolution.</p>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:8px;">💰</div>
+              <h3 style="margin-bottom:4px;">Fair Payment</h3>
+              <p style="font-size:0.85rem;opacity:0.7;">Negotiate rates, pay through held balance, release on completion.</p>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:8px;">🏪</div>
+              <h3 style="margin-bottom:4px;">Local Marketplace</h3>
+              <p style="font-size:0.85rem;opacity:0.7;">Businesses can sell products and services.</p>
+            </div>
+          </div>
+        </div>
+        </div>
+      `;
+
+      const slides = document.querySelectorAll('.landing-slide');
+      let currentSlide = 0;
+      if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        window.setInterval(() => {
+          slides[currentSlide].classList.remove('is-active');
+          currentSlide = (currentSlide + 1) % slides.length;
+          slides[currentSlide].classList.add('is-active');
+        }, 5000);
+      }
+    })();
+  </script>
+</body>
+</html>

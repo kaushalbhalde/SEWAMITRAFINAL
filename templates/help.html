@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Help & Support - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <script src="/static/js/app.js"></script>
+  <script>initPage('help', ['customer','worker','business','service-team','admin']).then(()=>{}).catch(()=>{});</script>
+
+  <div class="container" style="padding-top:28px;">
+    <div class="page-title">Help & Support</div>
+
+    <div class="card" style="display:grid;gap:14px;">
+      <div>
+        <input id="helpSearch" placeholder="What can we help you with?" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--neutral-200);font-size:1rem;" />
+      </div>
+      <div id="suggestions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+
+    <div style="height:18px"></div>
+
+    <div class="card">
+      <div class="card-title">Common Issues</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:12px;" id="categories">
+        <!-- categories inserted here -->
+      </div>
+    </div>
+
+    <div id="issuePane" class="card" style="display:none;">
+      <div class="card-title" id="issueTitle">Issue</div>
+      <div id="issueList" style="margin-top:8px;display:grid;gap:10px;"></div>
+    </div>
+
+    <div id="solutionPane" class="card" style="display:none;">
+      <div class="card-title" id="solutionTitle">Solution</div>
+      <div id="solutionBody" style="margin-top:8px;color:var(--neutral-700);"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button id="helpYes" class="btn btn-primary">Was this helpful? Yes</button>
+        <button id="helpNo" class="btn">No</button>
+      </div>
+    </div>
+
+    <div id="complaintForm" class="card" style="display:none;">
+      <div class="card-title">Raise a Complaint</div>
+      <form id="complaintFormEl">
+        <div class="form-group">
+          <label>Subject</label>
+          <input name="subject" required />
+        </div>
+        <div class="form-group">
+          <label>Related Booking/Service ID (optional)</label>
+          <input name="job_id" />
+        </div>
+        <div class="form-group">
+          <label>Preferred Resolution</label>
+          <select name="preferred_resolution">
+            <option value="refund">Refund</option>
+            <option value="reassign">Reassign Provider</option>
+            <option value="apology">Apology / Explanation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea name="description" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Upload evidence (image/video/document)</label>
+          <input type="file" name="evidence" multiple />
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button type="submit" class="btn btn-primary">Submit Complaint</button>
+          <button type="button" class="btn" onclick="hideComplaintForm()">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="complaintStatus" class="card" style="display:none;">
+      <div class="card-title">Complaint Registered</div>
+      <div id="complaintStatusBody" style="margin-top:8px;"></div>
+    </div>
+
+  </div>
+
+  <script src="/static/js/help.js"></script>
+</body>
+</html>

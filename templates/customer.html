@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Dashboard - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('dashboard', ['customer']);
+      if (!ok) return;
+      const walletRes = await API('wallet');
+      const jobsRes = await API('jobs');
+      const assignmentsRes = await API('assignments');
+      const myJobs = jobsRes.filter(j => true);
+      const activeAssignments = assignmentsRes.filter(a => a.status === 'in_progress' || a.status === 'pending_completion');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="dash-header">
+            <div>
+              <h2>Welcome, ${currentUser.name}</h2>
+              <div class="role-tag">Customer Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
+            </div>
+            <div class="flex-row gap-8">
+              <button class="btn btn-secondary" onclick="window.location.href='/review.html'">Reviews</button>
+              <button class="btn btn-primary" onclick="openJobModal()">+ Post a Job</button>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${myJobs.length}</div><div class="stat-label">Total Jobs</div></div>
+            <div class="stat-card"><div class="stat-value">${myJobs.filter(j => j.status === 'open').length}</div><div class="stat-label">Open Jobs</div></div>
+            <div class="stat-card"><div class="stat-value">${activeAssignments.length}</div><div class="stat-label">Active</div></div>
+            <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Job Payment Balance</div></div>
+          </div>
+
+          <section id="jobPaymentFeature"></section>
+
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('myJobs')">My Jobs</div>
+            <div class="tab" onclick="switchTab('assignments')">Active Assignments</div>
+            <div class="tab" onclick="switchTab('jobPayments')">Payment Activity</div>
+          </div>
+
+          <div id="tab-myJobs" class="tab-content active">
+            <div id="jobsList"></div>
+          </div>
+          <div id="tab-assignments" class="tab-content">
+            <div id="assignmentsList"></div>
+          </div>
+          <div id="tab-jobPayments" class="tab-content">
+            <div id="jobPaymentWalletContent"></div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="jobModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('jobModal')">&times;</button>
+            <h2>Post a New Job</h2>
+            <form id="jobForm">
+              <div class="form-group">
+                <label>Job Title</label>
+                <input type="text" id="jobTitle" required placeholder="e.g. Need a plumber for kitchen">
+              </div>
+              <div class="form-group">
+                <label>Category</label>
+                <select id="jobCategory"></select>
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <textarea id="jobDesc" placeholder="Describe the work..."></textarea>
+              </div>
+              <div class="grid grid-2">
+                <div class="form-group">
+                  <label>Budget (₹)</label>
+                  <input type="number" id="jobBudget" placeholder="e.g. 2000">
+                </div>
+                <div class="form-group">
+                  <label>Number of Workers Needed</label>
+                  <input type="number" id="jobNumWorkers" value="1" min="1">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Location / Address</label>
+                <input type="text" id="jobLocation" placeholder="Area or address">
+              </div>
+              <div class="form-group">
+                <label>Latitude (optional)</label>
+                <input type="number" id="jobLat" placeholder="e.g. 12.97" step="any">
+              </div>
+              <div class="form-group">
+                <label>Longitude (optional)</label>
+                <input type="number" id="jobLng" placeholder="e.g. 77.59" step="any">
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Post Job</button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      // Populate categories
+      const cats = await API('job-categories');
+      document.getElementById('jobCategory').innerHTML = cats.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+
+      renderJobs();
+      renderAssignments();
+      renderJobPaymentWallet(walletRes);
+
+      async function renderJobs() {
+        const el = document.getElementById('jobsList');
+        if (!myJobs.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No jobs posted yet. Click "Post a Job" to get started.</p></div>';
+          return;
+        }
+        el.innerHTML = myJobs.map(j => `
+          <div class="card job-item">
+            <div class="flex-between">
+              <div>
+                <h3>${j.title}</h3>
+                <div class="job-meta">
+                  <span>📂 ${j.category}</span>
+                  <span>👥 ${j.num_workers} worker(s)</span>
+                  <span>${statusBadge(j.status)}</span>
+                </div>
+                ${j.description ? `<p class="text-sm text-muted">${j.description}</p>` : ''}
+                ${j.location ? `<p class="text-sm text-muted">📍 ${j.location}</p>` : ''}
+              </div>
+                <div class="text-right">
+                <div class="job-budget">${j.budget ? fmtMoney(j.budget) : 'Negotiable'}</div>
+                <button class="btn btn-sm btn-secondary mt-8" onclick="viewJob(${j.id})">View</button>
+                ${j.status !== 'cancelled' && j.status !== 'completed' ? `<button class="btn btn-sm btn-danger mt-8" onclick="cancelMyJob(${j.id})">Cancel</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      async function cancelMyJob(jobId) {
+        const reason = prompt('Reason for cancelling this job (optional):', '');
+        if (reason === null) return;
+        if (!confirm('Cancel this job?')) return;
+        try {
+          await API('jobs/' + jobId + '/cancel', { method: 'POST', body: JSON.stringify({ reason }) });
+          toast('Job cancelled', 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (e) { toast(e.message, 'error'); }
+      }
+
+      function renderAssignments() {
+        const el = document.getElementById('assignmentsList');
+        if (!activeAssignments.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No active assignments.</p></div>';
+          return;
+        }
+        el.innerHTML = activeAssignments.map(a => `
+          <div class="card job-item" style="border-left-color:var(--warning);">
+            <div class="flex-between">
+              <div>
+                <h3>${a.job_title}</h3>
+                <div class="job-meta">
+                  <span>👤 ${a.worker_name}</span>
+                  <span>${statusBadge(a.status)}</span>
+                  <span>${fmtMoney(a.agreed_price)} (${a.price_type})</span>
+                </div>
+                ${a.status === 'pending_completion' ? '<p class="text-sm" style="color:var(--warning);">Worker marked as done - confirm to release payment</p>' : ''}
+              </div>
+              <div>
+                ${a.status === 'pending_completion' ? `<button class="btn btn-sm btn-success" onclick="completeJob(${a.id})">Confirm & Pay</button>` : ''}
+                <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${a.worker_id || 0}'">Message</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderJobPaymentWallet(w) {
+        const hasDemoDeposit = w.transactions.some(t => t.type === 'deposit' && t.description === 'Demo deposit (simulated payment)');
+        document.getElementById('jobPaymentFeature').innerHTML = `
+          <section class="job-payment-feature">
+            <div class="job-payment-heading">
+              <div>
+                <span class="job-payment-eyebrow">Secure job escrow</span>
+                <h2>Job Payment Wallet</h2>
+                <p>Deposit money before accepting a job. The agreed amount stays reserved until you approve the completed work, then it moves to the worker's wallet.</p>
+              </div>
+              <div class="job-payment-icon">₹</div>
+            </div>
+            <div class="job-payment-balances">
+              <div><span>Available for Job Payments</span><strong>${fmtMoney(w.wallet.balance)}</strong></div>
+              <div><span>Reserved Until Approval</span><strong>${fmtMoney(w.wallet.held_balance)}</strong></div>
+              <div><span>Total Protected</span><strong>${fmtMoney(Number(w.wallet.balance || 0) + Number(w.wallet.held_balance || 0))}</strong></div>
+            </div>
+            <div class="job-payment-actions">
+              <button class="btn btn-primary" onclick="openDepositModal()">Deposit for a Job</button>
+              ${hasDemoDeposit ? '<button class="btn btn-secondary" onclick="removeDemoDeposit()">Remove Demo Deposit</button>' : ''}
+            </div>
+            <div class="job-payment-steps">
+              <span><b>1</b> Deposit</span><i>→</i><span><b>2</b> Work completed</span><i>→</i><span><b>3</b> Approve</span><i>→</i><span><b>4</b> Worker paid</span>
+            </div>
+          </section>
+        `;
+        document.getElementById('jobPaymentWalletContent').innerHTML = `<div class="card">
+            <h3 class="card-title">Job Payment Activity</h3>
+            ${w.transactions.length ? `
+            <div class="table-wrap"><table>
+              <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th></tr>
+              ${w.transactions.map(t => `<tr>
+                <td>${fmtDate(t.created_at)}</td>
+                <td>${t.type}</td>
+                <td>${t.description}</td>
+                <td style="font-weight:600;color:${t.type === 'deposit' || t.type === 'release' ? 'var(--success)' : 'var(--error)'};">
+                  ${t.type === 'deposit' || t.type === 'release' ? '+' : '-'}${fmtMoney(t.amount)}
+                </td>
+              </tr>`).join('')}
+            </table></div>` : '<p class="text-muted text-sm">No transactions yet.</p>'}
+          </div>`;
+      }
+    })();
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    function openJobModal() { document.getElementById('jobModal').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id !== 'jobForm') return;
+      e.preventDefault();
+      try {
+        await API('jobs', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('jobTitle').value,
+            category: document.getElementById('jobCategory').value,
+            description: document.getElementById('jobDesc').value,
+            budget: parseFloat(document.getElementById('jobBudget').value) || null,
+            num_workers: parseInt(document.getElementById('jobNumWorkers').value) || 1,
+            location: document.getElementById('jobLocation').value,
+            latitude: parseFloat(document.getElementById('jobLat').value) || null,
+            longitude: parseFloat(document.getElementById('jobLng').value) || null
+          })
+        });
+        closeModal('jobModal');
+        toast('Job posted!', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+
+    function viewJob(jobId) { window.location.href = '/job-detail.html?id=' + jobId; }
+
+    async function completeJob(assignmentId) {
+      if (!confirm('Confirm job completion? Payment will be released to the worker.')) return;
+      try {
+        await API('assignments/' + assignmentId + '/complete', { method: 'POST' });
+        toast('Job completed! Payment released.', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function openDepositModal() {
+      const amt = prompt('Enter amount to deposit (simulated):', '500');
+      if (!amt) return;
+      try {
+        await API('wallet/deposit', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amt) }) });
+        toast('Deposit successful (simulated)', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function removeDemoDeposit() {
+      if (!confirm('Remove the latest demo deposit from the job payment wallet?')) return;
+      try {
+        await API('wallet/demo-deposit/remove', { method: 'POST' });
+        toast('Demo deposit removed.', 'success');
+        setTimeout(() => window.location.reload(), 500);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function openWithdrawModal() {
+      const amt = prompt('Enter amount to withdraw (simulated):', '100');
+      if (!amt) return;
+      try {
+        await API('wallet/withdraw', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amt) }) });
+        toast('Withdrawal successful (simulated)', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

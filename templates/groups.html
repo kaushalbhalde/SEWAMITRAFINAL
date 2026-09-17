@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worker Groups - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let myGroup = null;
+    (async function() {
+      const ok = await initPage('groups', ['worker']);
+      if (!ok) return;
+
+      try { myGroup = await API('groups/my'); } catch {}
+      const groups = await API('groups');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="page-title">Worker Groups</div>
+
+          <div class="flex-between mb-16">
+            <div></div>
+            <button class="btn btn-primary" onclick="openGroupModal()">+ Create Group</button>
+          </div>
+
+          ${myGroup ? `
+            <div class="card" style="border-left:4px solid var(--secondary);">
+              <h3 class="card-title">Your Group: ${myGroup.name}</h3>
+              <p class="text-sm text-muted">${myGroup.description || ''}</p>
+              <p class="text-sm mt-8">Members: ${myGroup.member_count}</p>
+              <button class="btn btn-secondary btn-sm mt-8" onclick="viewMembers(${myGroup.id})">View Members</button>
+            </div>
+          ` : ''}
+
+          <h3 class="card-title mb-16">All Groups</h3>
+          <div id="groupsList"></div>
+        </div>
+
+        <div class="modal-overlay" id="groupModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('groupModal')">&times;</button>
+            <h2>Create a Worker Group</h2>
+            <form id="groupForm">
+              <div class="form-group"><label>Group Name</label><input type="text" id="groupName" required placeholder="e.g. Quick Fix Team"></div>
+              <div class="form-group"><label>Description</label><textarea id="groupDesc" placeholder="What kind of jobs does your group do?"></textarea></div>
+              <button type="submit" class="btn btn-primary btn-block">Create</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="membersModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('membersModal')">&times;</button>
+            <h2>Group Members</h2>
+            <div id="membersList"></div>
+          </div>
+        </div>
+      `;
+
+      renderGroups(groups);
+    })();
+
+    function renderGroups(groups) {
+      const el = document.getElementById('groupsList');
+      if (!groups.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">👥</div><p>No groups yet. Create one!</p></div>';
+        return;
+      }
+      el.innerHTML = groups.map(g => `
+        <div class="card">
+          <div class="flex-between">
+            <div>
+              <h3>${g.name}</h3>
+              <p class="text-sm text-muted">Led by ${g.leader_name} | ${g.member_count} member(s)</p>
+              ${g.description ? `<p class="text-sm text-muted mt-8">${g.description}</p>` : ''}
+            </div>
+            <div>
+              <button class="btn btn-sm btn-secondary" onclick="viewMembers(${g.id})">Members</button>
+              ${!myGroup || myGroup.id !== g.id ? `<button class="btn btn-sm btn-primary" onclick="joinGroup(${g.id})">Join</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function viewMembers(gid) {
+      try {
+        const members = await API('groups/' + gid + '/members');
+        document.getElementById('membersList').innerHTML = members.length ? `
+          <div class="table-wrap"><table>
+            <tr><th>Name</th><th>Phone</th><th>Skills</th></tr>
+            ${members.map(m => `<tr><td>${m.name}</td><td>${m.phone || '-'}</td><td>${m.skills || '-'}</td></tr>`).join('')}
+          </table></div>
+        ` : '<p class="text-muted">No members.</p>';
+        document.getElementById('membersModal').classList.add('active');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function joinGroup(gid) {
+      if (!confirm('Join this group?')) return;
+      try {
+        await API('groups/' + gid + '/join', { method: 'POST' });
+        toast('Joined group!', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    function openGroupModal() { document.getElementById('groupModal').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id !== 'groupForm') return;
+      e.preventDefault();
+      try {
+        await API('groups', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('groupName').value,
+            description: document.getElementById('groupDesc').value
+          })
+        });
+        toast('Group created!', 'success');
+        closeModal('groupModal');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    });
+  </script>
+</body>
+</html>

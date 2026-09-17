@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('market');
+      if (!ok) return;
+      const products = await API('products');
+      const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
+
+      const shops = [
+        { name: 'Carpentry Tools Hub', type: 'Carpentry', lat: 12.9728, lng: 77.5970, icon: '🪚', distance: '0.8 km' },
+        { name: 'Plumber Pro Store', type: 'Plumbing', lat: 12.9694, lng: 77.6038, icon: '🔧', distance: '1.4 km' },
+        { name: 'Home Fix Supplies', type: 'General Tools', lat: 12.9761, lng: 77.5925, icon: '🧰', distance: '1.1 km' },
+        { name: 'Electric & Safety Mart', type: 'Electrical', lat: 12.9789, lng: 77.6060, icon: '⚡', distance: '2.0 km' }
+      ];
+
+      const workers = [
+        { name: 'Ravi', skill: 'Carpentry', distance: '0.9 km', status: 'Online now' },
+        { name: 'Naveen', skill: 'Plumbing', distance: '1.3 km', status: 'Available' },
+        { name: 'Suresh', skill: 'Tool fitting', distance: '2.1 km', status: 'Logged in' }
+      ];
+
+      document.getElementById('page').innerHTML = `
+        <div class="container">
+          <div class="page-title">Marketplace</div>
+          <p class="text-muted mb-16">Products and services from local businesses</p>
+
+          <div class="marketplace-layout">
+            <div class="card market-map-panel">
+              <div class="flex-between mb-12">
+                <h3 class="card-title">Nearby market & workers</h3>
+                <span class="text-sm text-muted">Demo map</span>
+              </div>
+
+              <div class="market-map-shell">
+                <iframe title="Nearby market map" loading="lazy" src="https://www.google.com/maps?q=12.9728,77.5985&z=14&output=embed"></iframe>
+                ${shops.map((shop, index) => `
+                  <div class="market-pin" style="left:${(shop.lng - 77.586) * 2000}px; top:${(12.983 - shop.lat) * 2000}px;">
+                    <span>${shop.icon}</span>
+                    <small>${shop.type}</small>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="market-legend">
+                ${shops.map(shop => `<span><i style="background:${shop.type === 'Carpentry' ? '#f97316' : shop.type === 'Plumbing' ? '#2563eb' : '#16a34a'}"></i>${shop.name}</span>`).join('')}
+              </div>
+            </div>
+
+            <div class="market-sidebar">
+              <div class="card mb-16">
+                <h3 class="card-title">Nearby shops</h3>
+                <div class="market-mini-list">
+                  ${shops.map(shop => `
+                    <div class="market-mini-item">
+                      <div class="market-mini-badge">${shop.icon}</div>
+                      <div>
+                        <strong>${shop.name}</strong>
+                        <div class="text-sm text-muted">${shop.type} • ${shop.distance}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="card">
+                <h3 class="card-title">Workers logged in</h3>
+                <div class="market-mini-list">
+                  ${workers.map(worker => `
+                    <div class="market-mini-item">
+                      <div class="market-mini-badge online">👷</div>
+                      <div>
+                        <strong>${worker.name}</strong>
+                        <div class="text-sm text-muted">${worker.skill} • ${worker.distance}</div>
+                        <div class="text-sm status-live">${worker.status}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="productsGrid" class="mt-16"></div>
+        </div>
+      `;
+
+      const el = document.getElementById('productsGrid');
+      if (!shuffledProducts.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🏪</div><p>No products available yet.</p></div>';
+        return;
+      }
+      el.innerHTML = `<div class="grid grid-3">` + shuffledProducts.map(p => `
+        <div class="product-card">
+          <div class="product-img">${p.image_url || '📦'}</div>
+          <div class="product-body">
+            <div class="product-name">${p.name}</div>
+            <div class="product-desc">${p.description || ''}</div>
+            <div class="product-price">${fmtMoney(p.price)}</div>
+            <div class="text-sm text-muted">by ${p.business_name}</div>
+            ${currentUser && currentUser.role !== 'business' ? `
+              <div class="flex-row gap-8 mt-8">
+                <button class="btn btn-sm btn-primary" onclick="orderProduct(${p.id}, '${p.name.replace(/'/g, '')}')">Order</button>
+                <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('') + `</div>`;
+    })();
+
+    async function orderProduct(pid, name) {
+      const qty = prompt('How many ' + name + '?', '1');
+      if (!qty) return;
+      try {
+        const res = await API('products/' + pid + '/order', {
+          method: 'POST',
+          body: JSON.stringify({ quantity: parseInt(qty) })
+        });
+        toast('Order placed! Total: ' + fmtMoney(res.total), 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

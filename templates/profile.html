@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let profileUserId = null;
+    let profileData = null;
+
+    (async function() {
+      const ok = await initPage('profile');
+      if (!ok) return;
+
+      const params = new URLSearchParams(window.location.search);
+      profileUserId = params.get('uid') || currentUser.id;
+
+      await loadProfile();
+    })();
+
+    async function loadProfile() {
+      try {
+        profileData = await API('profile/' + profileUserId);
+      } catch (e) {
+        document.getElementById('page').innerHTML += '<div class="container"><div class="empty-state"><div class="icon">❌</div><p>Profile not found.</p></div></div>';
+        return;
+      }
+
+      const u = profileData.user;
+      const wp = profileData.worker_profile || {};
+      const ratings = profileData.ratings;
+      const isLoggedIn = !!currentUser;
+      const isOwn = isLoggedIn && parseInt(profileUserId) === currentUser.id;
+      const previousWorkPhotos = Array.isArray(wp.previous_work_photos) ? wp.previous_work_photos : [];
+
+      let html = `
+        <div class="container profile-shell">
+          <button class="btn btn-ghost btn-sm mb-16" onclick="history.back()">← Back</button>
+
+          <div class="card profile-single-card">
+            <div class="profile-header-row">
+              <div class="profile-main-info">
+                <div class="profile-avatar-large">${u.name.charAt(0).toUpperCase()}</div>
+                <div>
+                  <h2>${u.name}</h2>
+                  <div class="profile-subtitle">
+                    <span>${u.role}</span>
+                    <span>•</span>
+                    <span>${u.email}</span>
+                  </div>
+                  <div class="mt-8 profile-badges">
+                    ${u.id_verified ? '<span class="badge badge-verified">ID Verified</span>' : isOwn ? '<span class="badge badge-unverified">Unverified</span>' : ''}
+                    ${profileData.avg_rating ? starsHTML(Math.round(profileData.avg_rating)) + ` <span class="text-sm text-muted">(${profileData.rating_count})</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="profile-actions">
+                ${isOwn ? '<button class="btn btn-primary btn-sm" onclick="openEditModal()">Edit Profile</button>' : ''}
+                ${isLoggedIn && currentUser.role === 'customer' && isOwn ? '<button class="btn btn-secondary btn-sm" onclick="window.location.href=\'/review.html\'">Reviews</button>' : ''}
+                ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="window.location.href='/messages.html?uid=${u.id}'">Message</button>` : ''}
+                ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openComplaintModal(${u.id})">Report</button>` : ''}
+                  ${isLoggedIn && !isOwn ? `<button class="btn btn-primary btn-sm" onclick="startCallProfile(${u.id})">Call</button>` : ''}
+              </div>
+            </div>
+
+            <div class="profile-content-grid">
+              <div class="profile-info-block">
+                <h3>About</h3>
+                <div class="profile-info-list">
+                  ${u.phone ? `<div class="profile-info-item"><div class="icon">📞</div><div>${u.phone}</div></div>` : ''}
+                  ${u.address ? `<div class="profile-info-item"><div class="icon">📍</div><div>${u.address}</div></div>` : ''}
+                  ${u.email ? `<div class="profile-info-item"><div class="icon">✉️</div><div>${u.email}</div></div>` : ''}
+                </div>
+                ${u.bio ? `<div class="profile-bio">${u.bio}</div>` : ''}
+              </div>
+
+              ${u.role === 'worker' ? `
+                <div class="profile-info-block">
+                  <h3>Quick Details</h3>
+                  ${wp ? `
+                    <div class="profile-info-list compact">
+                      <div class="profile-info-item"><div class="icon">🛠️</div><div><strong>Skills:</strong> ${(wp.skills || '').split(',').filter(s => s).map(s => `<span class="skill-tag">${s}</span>`).join('') || 'Not added yet'}</div></div>
+                      <div class="profile-info-item"><div class="icon">💰</div><div><strong>Hourly:</strong> ${wp.hourly_rate ? fmtMoney(wp.hourly_rate) : 'Not set'}</div></div>
+                      <div class="profile-info-item"><div class="icon">📅</div><div><strong>Daily:</strong> ${wp.daily_rate ? fmtMoney(wp.daily_rate) : 'Not set'}</div></div>
+                      <div class="profile-info-item"><div class="icon">✅</div><div><strong>Availability:</strong> ${wp.availability ? 'Available' : 'Unavailable'}</div></div>
+                    </div>
+                  ` : '<div class="text-muted text-sm">This profile does not have worker details yet.</div>'}
+                </div>
+              ` : ''}
+            </div>
+
+            ${wp && (wp.portfolio || previousWorkPhotos.length) ? `
+              <div class="profile-lower-section">
+                ${wp.portfolio ? `<div class="profile-bio"><strong>Portfolio / Previous Work:</strong><p class="mt-8" style="margin:0;">${wp.portfolio}</p></div>` : ''}
+                ${previousWorkPhotos.length ? `
+                  <div class="mt-16">
+                    <strong>Previous Work Photos</strong>
+                    <div class="profile-gallery">
+                      ${previousWorkPhotos.map(url => `<img src="${url}" alt="Previous work">`).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+      `;
+
+      if (u.role === 'worker') {
+        html += `
+          <div class="card">
+            <div class="flex-between flex-wrap">
+              <h3 class="card-title">Community Reviews (${profileData.rating_count})</h3>
+              ${isLoggedIn && currentUser.role === 'customer' && !isOwn ? `<button class="btn btn-secondary btn-sm" onclick="window.location.href='/review.html?uid=${u.id}'">Write a Review</button>` : ''}
+            </div>
+            ${ratings.length ? ratings.map(r => `
+              <div class="review-card">
+                <div class="review-card-header">
+                  <div class="review-author">
+                    <div class="review-author-badge">${(r.rater_name || 'C').charAt(0).toUpperCase()}</div>
+                    <div>
+                      <strong>${r.rater_name || 'Customer'}</strong>
+                      <div class="text-sm text-muted">${fmtDate(r.created_at)}</div>
+                    </div>
+                  </div>
+                  ${starsHTML(r.score)}
+                </div>
+                <p class="text-sm mt-8" style="line-height:1.7; white-space:pre-wrap;">${(r.review || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+              </div>
+            `).join('') : '<div class="empty-state"><div class="icon">⭐</div><p>No community reviews yet for this worker.</p></div>'}
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+
+      // Edit modal
+      if (isOwn) {
+        html += `
+          <div class="modal-overlay" id="editModal">
+            <div class="modal">
+              <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+              <h2>Edit Profile</h2>
+              <form id="editForm">
+                <div class="form-group"><label>Name</label><input type="text" id="editName" value="${u.name}"></div>
+                <div class="form-group"><label>Phone</label><input type="text" id="editPhone" value="${u.phone || ''}"></div>
+                <div class="form-group"><label>Address</label><input type="text" id="editAddress" value="${u.address || ''}"></div>
+                <div class="form-group"><label>Bio</label><textarea id="editBio">${u.bio || ''}</textarea></div>
+                ${u.role === 'worker' && wp ? `
+                  <div class="form-group"><label>Skills (comma separated)</label><input type="text" id="editSkills" value="${wp.skills || ''}"></div>
+                  <div class="grid grid-2">
+                    <div class="form-group"><label>Hourly Rate (₹)</label><input type="number" id="editHourly" value="${wp.hourly_rate || ''}" step="any"></div>
+                    <div class="form-group"><label>Daily Rate (₹)</label><input type="number" id="editDaily" value="${wp.daily_rate || ''}" step="any"></div>
+                  </div>
+                  <div class="form-group"><label>Portfolio</label><textarea id="editPortfolio">${wp.portfolio || ''}</textarea></div>
+                  <div class="form-group">
+                    <label>Previous Work Photos</label>
+                    <input type="file" id="editPreviousWorkPhotos" accept="image/*" multiple>
+                    <small class="text-muted text-sm">Upload before/after images of your work.</small>
+                    ${previousWorkPhotos.length ? `
+                      <div class="mt-8">
+                        <div class="text-sm text-muted mb-8">Current photos:</div>
+                        <div class="grid grid-3" style="gap:8px;">
+                          ${previousWorkPhotos.map(url => `<img src="${url}" alt="Current work" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--neutral-100);">`).join('')}
+                        </div>
+                      </div>
+                    ` : ''}
+                    <input type="hidden" id="existingPreviousWorkPhotos" value='${JSON.stringify(previousWorkPhotos)}'>
+                  </div>
+                ` : ''}
+                <button type="submit" class="btn btn-primary btn-block">Save</button>
+              </form>
+            </div>
+          </div>
+        `;
+      }
+
+      // Complaint modal
+      html += `
+        <div class="modal-overlay" id="complaintModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('complaintModal')">&times;</button>
+            <h2>File a Complaint</h2>
+            <form id="complaintForm">
+              <div class="form-group"><label>Subject</label><input type="text" id="complaintSubject" required placeholder="Brief description of issue"></div>
+              <div class="form-group"><label>Details</label><textarea id="complaintDesc" required placeholder="Describe what happened..."></textarea></div>
+              <button type="submit" class="btn btn-danger btn-block">Submit Complaint</button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('page').innerHTML += html;
+    }
+
+    function openEditModal() { document.getElementById('editModal').classList.add('active'); }
+    function openComplaintModal(uid) {
+      document.getElementById('complaintModal').dataset.uid = uid;
+      document.getElementById('complaintModal').classList.add('active');
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id === 'editForm') {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('name', document.getElementById('editName').value);
+        formData.append('phone', document.getElementById('editPhone').value);
+        formData.append('address', document.getElementById('editAddress').value);
+        formData.append('bio', document.getElementById('editBio').value);
+
+        const skillsEl = document.getElementById('editSkills');
+        if (skillsEl) {
+          formData.append('skills', skillsEl.value);
+          formData.append('hourly_rate', document.getElementById('editHourly').value || '');
+          formData.append('daily_rate', document.getElementById('editDaily').value || '');
+          formData.append('portfolio', document.getElementById('editPortfolio').value || '');
+          const existingPhotosInput = document.getElementById('existingPreviousWorkPhotos');
+          if (existingPhotosInput) {
+            formData.append('existing_previous_work_photos', existingPhotosInput.value);
+          }
+          const files = document.getElementById('editPreviousWorkPhotos').files;
+          for (const file of files) {
+            formData.append('previous_work_photos', file);
+          }
+        }
+
+        try {
+          const response = await fetch('/api/profile', {
+            method: 'PUT',
+            body: formData,
+            credentials: 'same-origin'
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.error || 'Profile update failed');
+          toast('Profile updated!', 'success');
+          closeModal('editModal');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) { toast(err.message, 'error'); }
+      }
+
+      if (e.target.id === 'complaintForm') {
+        e.preventDefault();
+        const uid = parseInt(document.getElementById('complaintModal').dataset.uid);
+        try {
+          await API('complaints', {
+            method: 'POST',
+            body: JSON.stringify({
+              respondent_id: uid,
+              subject: document.getElementById('complaintSubject').value,
+              description: document.getElementById('complaintDesc').value
+            })
+          });
+          toast('Complaint filed. Admin will review it.', 'success');
+          closeModal('complaintModal');
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
+    
+    // Call from profile
+    async function startCallProfile(uid) {
+      try {
+        const profile = await API('profile/' + uid);
+        const phone = profile.user && profile.user.phone ? profile.user.phone.replace(/\s+/g, '') : null;
+        if (!phone) {
+          toast('Phone number not available for this user', 'error');
+          return;
+        }
+        // Use tel: to invoke device dialer
+        window.location.href = 'tel:' + phone;
+      } catch (e) {
+        toast('Unable to start call', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

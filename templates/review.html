@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worker Reviews - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let workers = [];
+    let selectedWorkerId = null;
+    let selectedScore = 5;
+
+    (async function () {
+      const ok = await initPage('profile', ['customer']);
+      if (!ok) return;
+      await loadWorkers();
+      renderReviewPage();
+    })();
+
+    async function loadWorkers() {
+      try {
+        const res = await API('workers/nearby?radius=500');
+        workers = res.workers || [];
+        const urlParam = new URLSearchParams(window.location.search).get('uid');
+        if (urlParam) {
+          selectedWorkerId = Number(urlParam);
+        } else if (workers.length) {
+          selectedWorkerId = Number(workers[0].id);
+        }
+      } catch (err) {
+        workers = [];
+        selectedWorkerId = null;
+      }
+    }
+
+    function renderStarsInput(selected = 5) {
+      let html = '';
+      for (let i = 1; i <= 5; i++) {
+        html += `<span class="star-input ${i <= selected ? 'filled' : ''}" data-score="${i}" title="${i} star">★</span>`;
+      }
+      return html;
+    }
+
+    function buildReviewCard(r) {
+      const workerName = r.worker_name || 'Worker';
+      const name = r.rater_name || 'Customer';
+      const reviewText = (r.review || '').trim();
+      return `
+        <article class="card" style="padding:18px; margin-bottom:14px; border-left:4px solid var(--primary);">
+          <div class="flex-between flex-wrap">
+            <div class="flex-row">
+              <div style="width:42px;height:42px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">${(name || 'C').charAt(0).toUpperCase()}</div>
+              <div>
+                <strong>${name}</strong>
+                <div class="text-sm text-muted">for ${workerName}</div>
+              </div>
+            </div>
+            <div>${starsHTML(Number(r.score || 0))}</div>
+          </div>
+          <p class="mt-16" style="line-height:1.7; white-space:pre-wrap;">${reviewText ? reviewText.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'No review text provided.'}</p>
+          <div class="text-sm text-muted mt-8">${fmtDate(r.created_at)}</div>
+          ${currentUser && currentUser.id === r.rater_id ? `<div class="mt-8"><button class="btn btn-sm btn-secondary" onclick="editReview(${r.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteReview(${r.id})">Delete</button></div>` : ''}
+        </article>
+      `;
+    }
+
+    async function renderReviewPage() {
+      const page = document.getElementById('page');
+      if (!workers.length) {
+        page.innerHTML = `
+          <div class="container">
+            <button class="btn btn-ghost btn-sm mb-16" onclick="history.back()">← Back</button>
+            <div class="empty-state">
+              <div class="icon">💬</div>
+              <p>No workers are available for review right now.</p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const selected = workers.find(w => Number(w.id) === Number(selectedWorkerId)) || workers[0];
+      selectedWorkerId = Number(selected.id);
+
+      let reviews = [];
+      let avg = 0;
+      let count = 0;
+      try {
+        const data = await API('ratings/' + selectedWorkerId);
+        reviews = data.ratings || [];
+        avg = Number(data.average || 0);
+        count = Number(data.count || 0);
+      } catch (err) {
+        reviews = [];
+      }
+
+      page.innerHTML = `
+        <div class="container">
+          <button class="btn btn-ghost btn-sm mb-16" onclick="history.back()">← Back</button>
+          <div class="card">
+            <h3 class="card-title">Community Feedback</h3>
+            <div class="flex-row flex-wrap">
+              <div style="font-size:2rem;font-weight:700;">${avg ? avg.toFixed(1) : '0.0'}</div>
+              <div>${avg ? starsHTML(Math.round(avg)) : starsHTML(0)}</div>
+              <div class="text-sm text-muted">(${count} review${count === 1 ? '' : 's'})</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Write a Review</h3>
+            <form id="reviewForm">
+              <div class="form-group">
+                <label>Worker</label>
+                <select id="workerSelect">
+                  ${workers.map(w => `<option value="${w.id}" ${Number(w.id) === Number(selectedWorkerId) ? 'selected' : ''}>${w.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Rating</label>
+                <div id="starRating" class="mt-8">${renderStarsInput(selectedScore)}</div>
+              </div>
+              <div class="form-group">
+                <label>Share your experience</label>
+                <textarea id="reviewText" rows="5" placeholder="What was the job quality, communication, timing, or professionalism like? Share details that help other customers."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Submit Review</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Recent Reviews</h3>
+            ${reviews.length ? reviews.map(buildReviewCard).join('') : '<div class="empty-state"><div class="icon">⭐</div><p>No customer reviews yet for this worker.</p></div>'}
+          </div>
+        </div>
+      `;
+
+      const workerSelect = document.getElementById('workerSelect');
+      const starRating = document.getElementById('starRating');
+      const reviewText = document.getElementById('reviewText');
+
+      workerSelect.addEventListener('change', async (e) => {
+        selectedWorkerId = Number(e.target.value);
+        await renderReviewPage();
+      });
+
+      starRating.querySelectorAll('.star-input').forEach(star => {
+        star.addEventListener('click', () => {
+          selectedScore = Number(star.dataset.score);
+          starRating.querySelectorAll('.star-input').forEach(item => {
+            item.classList.toggle('filled', Number(item.dataset.score) <= selectedScore);
+          });
+        });
+      });
+
+      document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const workerId = Number(workerSelect.value);
+        const text = (reviewText.value || '').trim();
+
+        if (!workerId) {
+          toast('Please choose a worker first.', 'error');
+          return;
+        }
+        if (!text) {
+          toast('Please share your experience before submitting.', 'error');
+          return;
+        }
+
+        try {
+          await API('ratings', {
+            method: 'POST',
+            body: JSON.stringify({
+              ratee_id: workerId,
+              job_id: null,
+              score: Number(selectedScore),
+              review: text
+            })
+          });
+          toast('Review submitted successfully!', 'success');
+          reviewText.value = '';
+          selectedScore = 5;
+          await renderReviewPage();
+        } catch (err) {
+          toast(err.message || 'Unable to add review.', 'error');
+        }
+      });
+    }
+
+    async function editReview(ratingId) {
+      try {
+        const res = await API('ratings/' + selectedWorkerId); // get current list
+        const rating = (res.ratings || []).find(r => r.id === ratingId);
+        if (!rating) { toast('Rating not found', 'error'); return; }
+        if (currentUser.id !== rating.rater_id) { toast('Unauthorized', 'error'); return; }
+        const newScore = parseInt(prompt('New rating (1-5):', String(rating.score || 5)), 10);
+        if (!newScore || newScore < 1 || newScore > 5) { toast('Invalid score', 'error'); return; }
+        const newText = prompt('Edit your review text:', rating.review || '');
+        if (newText === null) return;
+        await API('ratings/' + ratingId, { method: 'PUT', body: JSON.stringify({ score: newScore, review: newText }) });
+        toast('Review updated', 'success');
+        await renderReviewPage();
+      } catch (e) { toast(e.message || 'Unable to edit review', 'error'); }
+    }
+
+    async function deleteReview(ratingId) {
+      if (!confirm('Delete this review? This cannot be undone.')) return;
+      try {
+        await API('ratings/' + ratingId, { method: 'DELETE' });
+        toast('Review deleted', 'success');
+        await renderReviewPage();
+      } catch (e) { toast(e.message || 'Unable to delete review', 'error'); }
+    }
+    
+  </script>
+</body>
+</html>
