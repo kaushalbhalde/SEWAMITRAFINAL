@@ -183,48 +183,108 @@ body.dark-theme tr:hover { background: rgba(148, 163, 184, 0.08); }
 body.dark-theme .cooperative-hero,
 body.dark-theme .co-op-card,
 body.dark-theme .co-op-stat,
-body.dark-theme .co-op-tab-panel {
+body.dark-theme .co-op-tab-panel,
+body.dark-theme .co-op-participation-card,
+body.dark-theme .co-op-side-card,
+body.dark-theme .impact-card {
   background: var(--neutral-50);
   border-color: var(--neutral-200);
 }
 
 /* ---------- Cooperative Gigs ---------- */
 .cooperative-page {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 28px 18px 48px;
 }
 
 .cooperative-hero {
-  background: linear-gradient(135deg, rgba(37,99,235,0.1), rgba(20,184,166,0.12));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(20,184,166,0.12), rgba(251,191,36,0.12));
   border: 1px solid rgba(148,163,184,0.25);
-  border-radius: 20px;
+  border-radius: 24px;
   padding: 28px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-lg);
+}
+
+.cooperative-hero-copy {
+  max-width: 720px;
 }
 
 .cooperative-hero h1 {
-  font-size: clamp(2rem, 4vw, 2.8rem);
-  margin-bottom: 10px;
+  font-size: clamp(2.1rem, 4vw, 3.1rem);
+  margin: 10px 0 12px;
   color: var(--neutral-900);
 }
 
 .cooperative-hero p {
-  max-width: 700px;
   color: var(--neutral-600);
-  font-size: 1rem;
+  font-size: 1.02rem;
+  max-width: 620px;
+}
+
+.cooperative-hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-kicker {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.co-op-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 0.9fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.co-op-main,
+.co-op-participation-card,
+.co-op-side-card,
+.impact-card {
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.co-op-main {
+  padding: 20px;
+}
+
+.co-op-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.co-op-section-header h2 {
+  font-size: 1.5rem;
+  margin-top: 6px;
+  color: var(--neutral-900);
 }
 
 .co-op-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .co-op-tab {
-  padding: 10px 18px;
+  padding: 10px 16px;
   border: 1px solid var(--neutral-300);
   border-radius: 999px;
   background: white;
@@ -235,18 +295,14 @@ body.dark-theme .co-op-tab-panel {
 }
 
 .co-op-tab.active {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), #3679ff);
   color: white;
-  border-color: var(--primary);
+  border-color: transparent;
+  box-shadow: 0 10px 18px rgba(37,99,235,0.22);
 }
 
 .co-op-tab-panel {
   display: none;
-  background: white;
-  border: 1px solid var(--neutral-200);
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: var(--shadow);
 }
 
 .co-op-tab-panel.active {
@@ -257,19 +313,20 @@ body.dark-theme .co-op-tab-panel {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .co-op-stat {
-  background: rgba(148,163,184,0.05);
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,252,0.95));
   border: 1px solid rgba(148,163,184,0.2);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 18px;
+  box-shadow: var(--shadow);
 }
 
 .co-op-stat .value {
-  font-size: 1.6rem;
-  font-weight: 700;
+  font-size: 1.7rem;
+  font-weight: 800;
   color: var(--neutral-900);
 }
 
@@ -279,13 +336,15 @@ body.dark-theme .co-op-tab-panel {
   margin-top: 4px;
 }
 
-.co-op-grid {
+.co-op-grid,
+.impact-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
-.co-op-card {
+.co-op-card,
+.impact-card {
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid rgba(148,163,184,0.2);
   border-radius: 16px;
@@ -295,7 +354,24 @@ body.dark-theme .co-op-tab-panel {
   gap: 12px;
 }
 
-.co-op-icon {
+.co-op-card h3,
+.impact-card h3,
+.co-op-participation-card h3,
+.co-op-side-card h3 {
+  font-size: 1.1rem;
+  color: var(--neutral-900);
+}
+
+.co-op-card p,
+.impact-card p,
+.co-op-participation-card p,
+.co-op-side-card li {
+  color: var(--neutral-600);
+  font-size: 0.92rem;
+}
+
+.co-op-icon,
+.impact-icon {
   width: 52px;
   height: 52px;
   display: grid;
@@ -303,16 +379,6 @@ body.dark-theme .co-op-tab-panel {
   border-radius: 14px;
   background: linear-gradient(135deg, var(--primary-light), rgba(20,184,166,0.12));
   font-size: 1.6rem;
-}
-
-.co-op-card h3 {
-  font-size: 1.15rem;
-  color: var(--neutral-900);
-}
-
-.co-op-card p {
-  color: var(--neutral-600);
-  font-size: 0.92rem;
 }
 
 .co-op-tag {
@@ -341,11 +407,11 @@ body.dark-theme .co-op-tab-panel {
 }
 
 .co-op-progress {
-  margin-top: 8px;
   height: 10px;
   background: var(--neutral-200);
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 4px;
 }
 
 .co-op-progress > span {
@@ -355,15 +421,57 @@ body.dark-theme .co-op-tab-panel {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
 }
 
-.co-op-actions {
+.co-op-side-panel {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.co-op-participation-card,
+.co-op-side-card {
+  padding: 18px;
+}
+
+.co-op-side-header {
+  margin-bottom: 14px;
+}
+
+.co-op-steps {
+  list-style: none;
+  margin-top: 14px;
+  display: grid;
   gap: 12px;
-  margin-top: 20px;
+  counter-reset: steps;
+  padding-left: 0;
+}
+
+.co-op-steps li {
+  display: flex;
+  gap: 10px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: rgba(148,163,184,0.05);
+  border: 1px solid rgba(148,163,184,0.12);
+}
+
+.co-op-steps strong {
+  color: var(--primary);
+}
+
+@media (max-width: 980px) {
+  .cooperative-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .co-op-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .co-op-grid,
+  .impact-grid,
   .co-op-stats {
     grid-template-columns: 1fr;
   }
