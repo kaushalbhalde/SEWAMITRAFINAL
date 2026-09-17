@@ -15,8 +15,9 @@
       const ok = await initPage('market');
       if (!ok) return;
       const products = await API('products');
+      const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
 
-      document.getElementById('page').innerHTML += `
+      document.getElementById('page').innerHTML = `
         <div class="container">
           <div class="page-title">Marketplace</div>
           <p class="text-muted mb-16">Products and services from local businesses</p>
@@ -25,11 +26,11 @@
       `;
 
       const el = document.getElementById('productsGrid');
-      if (!products.length) {
+      if (!shuffledProducts.length) {
         el.innerHTML = '<div class="empty-state"><div class="icon">🏪</div><p>No products available yet.</p></div>';
         return;
       }
-      el.innerHTML = `<div class="grid grid-3">` + products.map(p => `
+      el.innerHTML = `<div class="grid grid-3">` + shuffledProducts.map(p => `
         <div class="product-card">
           <div class="product-img">${p.image_url || '📦'}</div>
           <div class="product-body">
@@ -37,7 +38,7 @@
             <div class="product-desc">${p.description || ''}</div>
             <div class="product-price">${fmtMoney(p.price)}</div>
             <div class="text-sm text-muted">by ${p.business_name}</div>
-            ${currentUser.role !== 'business' ? `
+            ${currentUser && currentUser.role !== 'business' ? `
               <div class="flex-row gap-8 mt-8">
                 <button class="btn btn-sm btn-primary" onclick="orderProduct(${p.id}, '${p.name.replace(/'/g, '')}')">Order</button>
                 <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>

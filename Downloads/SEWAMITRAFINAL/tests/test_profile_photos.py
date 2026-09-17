@@ -77,6 +77,14 @@ class WorkerProfilePhotoTests(unittest.TestCase):
         self.assertIn('/static/uploads/previous-work/kaushal-cooking-sample.svg', profile['previous_work_photos'])
         conn.close()
 
+    def test_customer_profile_template_hides_quick_details(self):
+        template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'profile.html')
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+
+        self.assertIn("u.role === 'worker' ? `", template)
+        self.assertIn('Quick Details', template)
+
 
 if __name__ == '__main__':
     unittest.main()
