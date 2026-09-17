@@ -66,6 +66,7 @@
                 ${isLoggedIn && currentUser.role === 'customer' && isOwn ? '<button class="btn btn-secondary btn-sm" onclick="window.location.href=\'/review.html\'">Reviews</button>' : ''}
                 ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="window.location.href='/messages.html?uid=${u.id}'">Message</button>` : ''}
                 ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openComplaintModal(${u.id})">Report</button>` : ''}
+                  ${isLoggedIn && !isOwn ? `<button class="btn btn-primary btn-sm" onclick="startCallProfile(${u.id})">Call</button>` : ''}
               </div>
             </div>
 
@@ -261,6 +262,22 @@
         } catch (err) { toast(err.message, 'error'); }
       }
     });
+    
+    // Call from profile
+    async function startCallProfile(uid) {
+      try {
+        const profile = await API('profile/' + uid);
+        const phone = profile.user && profile.user.phone ? profile.user.phone.replace(/\s+/g, '') : null;
+        if (!phone) {
+          toast('Phone number not available for this user', 'error');
+          return;
+        }
+        // Use tel: to invoke device dialer
+        window.location.href = 'tel:' + phone;
+      } catch (e) {
+        toast('Unable to start call', 'error');
+      }
+    }
   </script>
 </body>
 </html>
