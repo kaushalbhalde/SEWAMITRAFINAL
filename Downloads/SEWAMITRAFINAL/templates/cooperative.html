@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cooperative Gigs - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('cooperative', ['customer', 'worker', 'service-team', 'business']);
+      if (!ok) return;
+
+      document.getElementById('page').innerHTML = `
+        <main class="cooperative-page">
+          <section class="cooperative-hero">
+            <span class="section-kicker">Community Projects</span>
+            <h1>Cooperative Gigs</h1>
+            <p>Participate in neighborhood initiatives through volunteering, skilled support, or project fundraising. These community-led gigs bring people together to create tangible local impact.</p>
+          </section>
+
+          <div class="co-op-tabs">
+            <button class="co-op-tab active" data-tab="volunteer">Volunteer</button>
+            <button class="co-op-tab" data-tab="skills">Skills</button>
+            <button class="co-op-tab" data-tab="fundraising">Fundraising</button>
+            <button class="co-op-tab" data-tab="impact">Impact</button>
+          </div>
+
+          <section class="co-op-tab-panel active" id="panel-volunteer">
+            <div class="co-op-stats">
+              <div class="co-op-stat"><div class="value">48</div><div class="label">Volunteers joined</div></div>
+              <div class="co-op-stat"><div class="value">12</div><div class="label">Open opportunities</div></div>
+              <div class="co-op-stat"><div class="value">7</div><div class="label">Neighborhood teams</div></div>
+              <div class="co-op-stat"><div class="value">210</div><div class="label">Hours contributed</div></div>
+            </div>
+
+            <div class="co-op-grid">
+              <article class="co-op-card">
+                <div class="co-op-icon">🧹</div>
+                <span class="co-op-tag volunteer">Volunteer</span>
+                <h3>Community Clean-Up Drive</h3>
+                <p>Join a local cleanup crew to clear drains, plant saplings, and keep public spaces safer and cleaner.</p>
+                <div class="co-op-meta"><span>12 volunteers needed</span><span>Saturday</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🏫</div>
+                <span class="co-op-tag volunteer">Volunteer</span>
+                <h3>School Maintenance Day</h3>
+                <p>Help repaint classrooms, fix benches, and support maintenance tasks for a better learning environment.</p>
+                <div class="co-op-meta"><span>8 spots left</span><span>Next Sunday</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🚰</div>
+                <span class="co-op-tag volunteer">Volunteer</span>
+                <h3>Water & Drainage Support</h3>
+                <p>Support community water safety checks and drainage improvement work in heavily impacted lanes.</p>
+                <div class="co-op-meta"><span>5 crew leads needed</span><span>Flexible</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="co-op-tab-panel" id="panel-skills">
+            <div class="co-op-grid">
+              <article class="co-op-card">
+                <div class="co-op-icon">📚</div>
+                <span class="co-op-tag skills">Skills</span>
+                <h3>School Repair & Learning Support</h3>
+                <p>Offer mentoring, digital literacy coaching, and repair support to students and local learning centers.</p>
+                <div class="co-op-meta"><span>6 mentors needed</span><span>After school</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🔧</div>
+                <span class="co-op-tag skills">Skills</span>
+                <h3>Emergency Repair Collective</h3>
+                <p>Skilled workers can help fix electrical, plumbing, carpentry, and safety issues in shared community spaces.</p>
+                <div class="co-op-meta"><span>4 skilled experts</span><span>On call</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">💻</div>
+                <span class="co-op-tag skills">Skills</span>
+                <h3>Digital Skills Bootcamp</h3>
+                <p>Teach online safety, resume building, and basic computer skills to youth and local residents.</p>
+                <div class="co-op-meta"><span>3 trainers</span><span>Weekend</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="co-op-tab-panel" id="panel-fundraising">
+            <div class="co-op-grid">
+              <article class="co-op-card">
+                <div class="co-op-icon">🌱</div>
+                <span class="co-op-tag fund">Fundraise</span>
+                <h3>Neighborhood Garden Project</h3>
+                <p>Raise funds for seeds, compost, irrigation, and garden tools for a shared community food-growing project.</p>
+                <div class="co-op-progress"><span style="width: 35%"></span></div>
+                <div class="co-op-meta"><span>₹18,500 goal</span><span>35% funded</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🩺</div>
+                <span class="co-op-tag fund">Fundraise</span>
+                <h3>Health Camp & Relief Support</h3>
+                <p>Support medical essentials, volunteer transport, and emergency supplies for local welfare drives.</p>
+                <div class="co-op-progress"><span style="width: 62%"></span></div>
+                <div class="co-op-meta"><span>₹42,000 goal</span><span>62% funded</span></div>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🧑‍🤝‍🧑</div>
+                <span class="co-op-tag fund">Fundraise</span>
+                <h3>Community Care Kit Drive</h3>
+                <p>Fund essentials like food kits, hygiene supplies, and temporary support for vulnerable households.</p>
+                <div class="co-op-progress"><span style="width: 48%"></span></div>
+                <div class="co-op-meta"><span>₹26,000 goal</span><span>48% funded</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="co-op-tab-panel" id="panel-impact">
+            <div class="co-op-grid">
+              <article class="co-op-card">
+                <div class="co-op-icon">✅</div>
+                <span class="co-op-tag support">Impact</span>
+                <h3>Verified local initiatives</h3>
+                <p>Every cooperative project is reviewed by the community team to ensure safety, transparency, and local benefit.</p>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">🤝</div>
+                <span class="co-op-tag support">Impact</span>
+                <h3>Skills + funds + labor</h3>
+                <p>People can contribute either through time, expertise, or financial support depending on what each project needs.</p>
+              </article>
+
+              <article class="co-op-card">
+                <div class="co-op-icon">📣</div>
+                <span class="co-op-tag support">Impact</span>
+                <h3>Open community coordination</h3>
+                <p>Project volunteers and donors can track progress, updates, and collective milestones from one place.</p>
+              </article>
+            </div>
+          </section>
+
+          <div class="co-op-actions">
+            <button class="btn btn-primary" onclick="window.location.href='/jobs.html'">Join a Gig</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/marketplace.html'">View Campaigns</button>
+          </div>
+        </main>
+      `;
+
+      document.querySelectorAll('.co-op-tab').forEach(button => {
+        button.addEventListener('click', () => {
+          const tab = button.dataset.tab;
+          document.querySelectorAll('.co-op-tab').forEach(item => item.classList.toggle('active', item === button));
+          document.querySelectorAll('.co-op-tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + tab));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
