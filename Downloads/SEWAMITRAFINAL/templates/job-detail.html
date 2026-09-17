@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Detail - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let jobId = new URLSearchParams(window.location.search).get('id');
+    let jobData = null;
+    let myGroup = null;
+
+    (async function() {
+      const ok = await initPage('jobs', ['customer', 'worker', 'admin']);
+      if (!ok) return;
+
+      if (currentUser.role === 'worker') {
+        try { myGroup = await API('groups/my'); } catch {}
+      }
+
+      await loadJob();
+    })();
+
+    async function loadJob() {
+      try {
+        jobData = await API('jobs/' + jobId);
+      } catch (e) {
+        document.getElementById('page').innerHTML += `<div class="container"><div class="empty-state"><div class="icon">❌</div><p>Job not found.</p></div></div>`;
+        return;
+      }
+
+      const j = jobData.job;
+      const apps = jobData.applications;
+
+      let html = `
+        <div class="container">
+          <button class="btn btn-ghost btn-sm mb-16" onclick="history.back()">← Back</button>
+          <div class="card">
+            <h2>${j.title}</h2>
+            <div class="job-meta mt-8">
+              <span>📂 ${j.category}</span>
+              <span>👤 ${j.customer_name}</span>
+              <span>👥 ${j.num_workers} worker(s) needed</span>
+              <span>${statusBadge(j.status)}</span>
+            </div>
+            ${j.description ? `<p class="mt-8">${j.description}</p>` : ''}
+            <div class="mt-8">
+              <span class="job-budget" style="font-size:1.2rem;">${j.budget ? fmtMoney(j.budget) : 'Negotiable'}</span>
+              ${j.location ? `<p class="text-sm text-muted mt-8">📍 ${j.location}</p>` : ''}
+              ${(j.latitude !== null && j.longitude !== null) || j.location ? `<button class="btn btn-sm btn-secondary mt-8" onclick="viewWorkLocation()">View work location on map</button>` : ''}
+              ${currentUser.role === 'customer' && j.status !== 'cancelled' && j.status !== 'completed' ? `<button class="btn btn-sm btn-danger mt-8" onclick="cancelJob(${j.id})">Cancel Job</button>` : ''}
+            </div>
+          </div>
+      `;
+
+      if (currentUser.role === 'worker' && j.status === 'open') {
+        html += `
+          <div class="card">
+            <h3 class="card-title">Apply for this Job</h3>
+            <form id="applyForm">
+              <div class="grid grid-2">
+                <div class="form-group">
+                  <label>Your Price Offer (₹)</label>
+                  <input type="number" id="proposedPrice" placeholder="e.g. 1500">
+                </div>
+                <div class="form-group">
+                  <label>Price Type</label>
+                  <select id="priceType">
+                    <option value="total">Total Job Price</option>
+                    <option value="hourly">Hourly Rate</option>
+                    <option value="daily">Daily Rate</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Message to Customer</label>
+                <textarea id="applyMsg" placeholder="Introduce yourself and your offer..."></textarea>
+              </div>
+              ${myGroup ? `
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="applyAsGroup" style="width:auto;margin-right:6px;">
+                  Apply as group: ${myGroup.name} (${myGroup.member_count} members)
+                </label>
+              </div>` : ''}
+              <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+          </div>
+        `;
+      }
+
+      if (currentUser.role === 'customer' && apps.length) {
+        html += `
+          <div class="card">
+            <h3 class="card-title">Applications (${apps.length})</h3>
+            <div id="appsList">
+              ${apps.map(a => `
+                <div class="card" style="border:1px solid var(--neutral-200);margin-bottom:12px;">
+                  <div class="flex-between">
+                    <div>
+                      <strong>${a.worker_name}</strong>
+                      <div class="job-meta">
+                        <span>Offer: ${a.proposed_price ? fmtMoney(a.proposed_price) + ' (' + a.price_type + ')' : 'Negotiable'}</span>
+                        <span>${statusBadge(a.status)}</span>
+                      </div>
+                      ${a.message ? `<p class="text-sm text-muted">"${a.message}"</p>` : ''}
+                    </div>
+                    <div class="flex-row gap-8">
+                      ${a.status === 'pending' ? `
+                        <button class="btn btn-sm btn-success" onclick="openNegotiate(${a.id}, ${a.proposed_price || 0}, '${a.price_type}')">Negotiate</button>
+                        <button class="btn btn-sm btn-primary" onclick="acceptApp(${a.id})">Accept</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectApp(${a.id})">Reject</button>
+                      ` : ''}
+                      <button class="btn btn-sm btn-secondary" onclick="window.location.href='/profile.html?uid=${a.worker_id}'">Profile</button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+
+      html += `
+        <div class="modal-overlay" id="negotiateModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('negotiateModal')">&times;</button>
+            <h2>Negotiate Price</h2>
+            <div id="negHistory"></div>
+            <form id="negotiateForm">
+              <div class="form-group">
+                <label>Your Counter-Offer (₹)</label>
+                <input type="number" id="negPrice" placeholder="e.g. 1200">
+              </div>
+              <div class="form-group">
+                <label>Price Type</label>
+                <select id="negPriceType">
+                  <option value="total">Total Job Price</option>
+                  <option value="hourly">Hourly Rate</option>
+                  <option value="daily">Daily Rate</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Message</label>
+                <textarea id="negMsg" placeholder="Explain your offer..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Send Counter-Offer</button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('page').innerHTML += html;
+    }
+
+    let currentAppId = null;
+
+    function viewWorkLocation() {
+      const params = new URLSearchParams({ location: jobData.job.location || '' });
+      if (jobData.job.latitude !== null && jobData.job.longitude !== null) {
+        params.set('lat', jobData.job.latitude);
+        params.set('lng', jobData.job.longitude);
+      }
+      window.location.href = '/map.html?' + params.toString();
+    }
+
+    async function openNegotiate(appId, currentPrice, priceType) {
+      currentAppId = appId;
+      document.getElementById('negPrice').value = currentPrice || '';
+      document.getElementById('negPriceType').value = priceType || 'total';
+      document.getElementById('negotiateModal').classList.add('active');
+      try {
+        const negs = await API('applications/' + appId + '/negotiations');
+        document.getElementById('negHistory').innerHTML = negs.length ? '<h3 class="card-title">Negotiation History</h3>' + negs.map(n => `
+          <div class="card" style="border:1px solid var(--neutral-200);padding:12px;margin-bottom:8px;">
+            <div class="text-sm"><strong>${n.proposed_by === 'customer' ? 'Customer' : 'Worker'}</strong> offered ${fmtMoney(n.price)} (${n.price_type})</div>
+            ${n.message ? `<div class="text-sm text-muted">"${n.message}"</div>` : ''}
+            <div class="text-sm text-muted">${fmtDate(n.created_at)}</div>
+          </div>
+        `).join('') : '';
+      } catch {}
+    }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id === 'applyForm') {
+        e.preventDefault();
+        const asGroup = document.getElementById('applyAsGroup')?.checked && myGroup;
+        try {
+          if (asGroup) {
+            await API('jobs/' + jobId + '/apply-group', {
+              method: 'POST',
+              body: JSON.stringify({
+                group_id: myGroup.id,
+                proposed_price: parseFloat(document.getElementById('proposedPrice').value) || null,
+                price_type: document.getElementById('priceType').value,
+                message: document.getElementById('applyMsg').value
+              })
+            });
+          } else {
+            await API('jobs/' + jobId + '/apply', {
+              method: 'POST',
+              body: JSON.stringify({
+                proposed_price: parseFloat(document.getElementById('proposedPrice').value) || null,
+                price_type: document.getElementById('priceType').value,
+                message: document.getElementById('applyMsg').value
+              })
+            });
+          }
+          toast('Application sent!', 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) { toast(err.message, 'error'); }
+      }
+
+      if (e.target.id === 'negotiateForm') {
+        e.preventDefault();
+        try {
+          await API('applications/' + currentAppId + '/negotiate', {
+            method: 'POST',
+            body: JSON.stringify({
+              price: parseFloat(document.getElementById('negPrice').value) || null,
+              price_type: document.getElementById('negPriceType').value,
+              message: document.getElementById('negMsg').value
+            })
+          });
+          toast('Counter-offer sent!', 'success');
+          closeModal('negotiateModal');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
+
+    async function acceptApp(appId) {
+      const app = jobData.applications.find(a => a.id === appId);
+      const price = prompt('Confirm agreed price (₹):', app.proposed_price || '');
+      if (!price) return;
+      try {
+        await API('applications/' + appId + '/accept', {
+          method: 'POST',
+          body: JSON.stringify({ agreed_price: parseFloat(price), price_type: app.price_type })
+        });
+        toast('Application accepted! Job assigned.', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function rejectApp(appId) {
+      if (!confirm('Reject this application?')) return;
+      try {
+        await API('applications/' + appId + '/reject', { method: 'POST' });
+        toast('Application rejected.', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function cancelJob(jobId) {
+      const reason = prompt('Reason for cancelling this job (optional):', '');
+      if (reason === null) return; // cancelled
+      if (!confirm('Are you sure you want to cancel this job?')) return;
+      try {
+        await API('jobs/' + jobId + '/cancel', { method: 'POST', body: JSON.stringify({ reason }) });
+        toast('Job cancelled', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) { toast(err.message, 'error'); }
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+  </script>
+</body>
+</html>

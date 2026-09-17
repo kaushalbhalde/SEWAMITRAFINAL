@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('orders');
+      if (!ok) return;
+      const orders = await API('orders');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="page-title">My Orders</div>
+          <div id="ordersList"></div>
+        </div>
+      `;
+
+      const el = document.getElementById('ordersList');
+      if (!orders.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>No orders yet.</p></div>';
+        return;
+      }
+      el.innerHTML = `<div class="table-wrap"><table>
+        <tr><th>Order</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th></tr>
+        ${orders.map(o => `<tr>
+          <td>#${o.id}</td><td>${o.product_name}</td><td>${o.quantity}</td>
+          <td>${fmtMoney(o.total_price)}</td><td>${statusBadge(o.status)}</td>
+          <td>${fmtDate(o.created_at)}</td>
+        </tr>`).join('')}
+      </table></div>`;
+    })();
+  </script>
+</body>
+</html>

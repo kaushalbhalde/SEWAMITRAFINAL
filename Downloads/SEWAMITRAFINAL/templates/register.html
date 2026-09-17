@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let selectedRole = 'customer';
+    let categories = [];
+    let teamMembers = [{ name: '', email: '', password: '', phone: '', skills: '' }];
+
+    (async function() {
+      const auth = await checkAuth();
+      if (auth.user) { window.location.href = getDashboardUrl(auth.user.role); return; }
+      try { categories = await API('job-categories'); } catch {}
+
+      document.getElementById('page').innerHTML = `
+        ${renderNavbar()}
+        ${renderLangBar()}
+        <div class="auth-wrap" style="align-items:flex-start;padding-top:40px;">
+          <div class="auth-card" style="max-width:560px;">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join SEWAMITRA as a Customer, Worker, or service-team</p>
+
+            <label style="font-size:0.875rem;font-weight:600;margin-bottom:6px;display:block;">I am a...</label>
+            <div class="role-selector">
+              <div class="role-option selected" onclick="selectRole('customer')" id="role-customer">
+                <span class="role-icon">🏠</span> Customer
+              </div>
+              <div class="role-option" onclick="selectRole('worker')" id="role-worker">
+                <span class="role-icon">🔧</span> Worker
+              </div>
+              <div class="role-option" onclick="selectRole('service-team')" id="role-service-team">
+                <span class="role-icon">👥</span> Service Team
+              </div>
+            </div>
+
+            <form id="regForm">
+              <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="name" required placeholder="Your name">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" required placeholder="you@example.com">
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="text" id="phone" placeholder="+91...">
+              </div>
+              <div class="form-group">
+                <label>ID Number (for verification)</label>
+                <input type="text" id="id_number" placeholder="Aadhaar / PAN / License">
+              </div>
+              <div class="form-group">
+                <label>Address</label>
+                <input type="text" id="address" placeholder="Your area / city">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="behalfCheck" onchange="toggleBehalf()" style="width:auto;margin-right:6px;">
+                  Registering on behalf of someone else
+                </label>
+              </div>
+              <div id="behalfFields" class="hidden">
+                <div class="form-group">
+                  <label>On behalf of (name)</label>
+                  <input type="text" id="on_behalf_of" placeholder="Their name">
+                </div>
+                <div class="form-group">
+                  <label>Their details / relationship</label>
+                  <input type="text" id="behalf_details" placeholder="e.g. Father, cannot use app">
+                </div>
+              </div>
+
+              <div id="workerFields" class="hidden">
+                <div class="form-group">
+                  <label>Skills / Job Types (select all that apply)</label>
+                  <div id="skillPicker" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                </div>
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label>Hourly Rate (₹)</label>
+                    <input type="number" id="hourly_rate" placeholder="e.g. 200">
+                  </div>
+                  <div class="form-group">
+                    <label>Daily Rate (₹)</label>
+                    <input type="number" id="daily_rate" placeholder="e.g. 1500">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Portfolio / Previous Work (optional)</label>
+                  <textarea id="portfolio" placeholder="Describe your past work experience..."></textarea>
+                </div>
+              </div>
+
+              <div id="communityFields" class="hidden">
+                <div class="form-group">
+                  <label>Community Description</label>
+                  <textarea id="bio" placeholder="Tell us about your community..."></textarea>
+                </div>
+              </div>
+
+              <div id="service-teamFields" class="hidden">
+                <div class="form-group">
+                  <label>Team Name</label>
+                  <input type="text" id="team_name" placeholder="e.g. FastFix Home Services">
+                </div>
+                <div class="form-group">
+                  <label>Team Description</label>
+                  <textarea id="team_description" placeholder="Describe your service team, specialties, and experience..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Team Members</label>
+                  <div id="teamMembersList"></div>
+                  <button type="button" class="btn btn-secondary" onclick="addTeamMember()" style="margin-top:10px;">+ Add member</button>
+                </div>
+              </div>
+
+              <div id="businessFields" class="hidden">
+                <div class="form-group">
+                  <label>Business Description</label>
+                  <textarea id="bio" placeholder="What does your business offer?"></textarea>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block">Register</button>
+            </form>
+            <p style="margin-top:16px;text-align:center;font-size:0.85rem;color:var(--neutral-500);">
+              Already have an account? <a href="/login.html" style="color:var(--primary);font-weight:600;">Login</a>
+            </p>
+          </div>
+        </div>
+      `;
+
+      renderSkillPicker();
+      renderTeamMembers();
+    })();
+
+    function addTeamMember(member = {}) {
+      teamMembers.push({
+        name: member.name || '',
+        email: member.email || '',
+        password: member.password || '',
+        phone: member.phone || '',
+        skills: member.skills || ''
+      });
+      renderTeamMembers();
+    }
+
+    function renderTeamMembers() {
+      const container = document.getElementById('teamMembersList');
+      if (!container) return;
+      container.innerHTML = teamMembers.map((member, index) => `
+        <div class="team-member-row" style="border:1px solid #e5e7eb;padding:12px;border-radius:12px;margin-bottom:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Member ${index + 1} Name</label>
+            <input type="text" value="${member.name}" data-member-index="${index}" data-field="name" placeholder="Full name">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Email</label>
+            <input type="email" value="${member.email}" data-member-index="${index}" data-field="email" placeholder="member@email.com">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Password</label>
+            <input type="password" value="${member.password}" data-member-index="${index}" data-field="password" placeholder="Password">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Phone</label>
+            <input type="text" value="${member.phone}" data-member-index="${index}" data-field="phone" placeholder="+91...">
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:1 / -1;">
+            <label>Skills</label>
+            <input type="text" value="${member.skills}" data-member-index="${index}" data-field="skills" placeholder="Plumbing, Electrical, Painting">
+          </div>
+          <div style="grid-column:1 / -1; display:flex; justify-content:flex-end;">
+            <button type="button" class="btn btn-danger" onclick="removeTeamMember(${index})" style="padding:8px 12px;">Remove</button>
+          </div>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const idx = Number(e.target.dataset.memberIndex);
+          const field = e.target.dataset.field;
+          teamMembers[idx][field] = e.target.value;
+        });
+      });
+    }
+
+    function removeTeamMember(index) {
+      teamMembers.splice(index, 1);
+      if (teamMembers.length === 0) teamMembers.push({ name: '', email: '', password: '', phone: '', skills: '' });
+      renderTeamMembers();
+    }
+
+    function selectRole(role) {
+      selectedRole = role;
+      document.querySelectorAll('.role-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('role-' + role).classList.add('selected');
+      document.getElementById('workerFields').classList.toggle('hidden', role !== 'worker');
+      document.getElementById('businessFields').classList.toggle('hidden', role !== 'business');
+      document.getElementById('service-teamFields').classList.toggle('hidden', role !== 'service-team');
+    }
+
+    let selectedSkills = [];
+    function renderSkillPicker() {
+      const container = document.getElementById('skillPicker');
+      if (!container) return;
+      container.innerHTML = categories.map(c =>
+        `<span class="skill-tag" style="cursor:pointer;${selectedSkills.includes(c.name) ? 'background:var(--primary);color:white;' : ''}" onclick="toggleSkill('${c.name}')">${c.icon} ${c.name}</span>`
+      ).join('');
+    }
+
+    function toggleSkill(name) {
+      if (selectedSkills.includes(name)) selectedSkills = selectedSkills.filter(s => s !== name);
+      else selectedSkills.push(name);
+      renderSkillPicker();
+    }
+
+    function toggleBehalf() {
+      document.getElementById('behalfFields').classList.toggle('hidden', !document.getElementById('behalfCheck').checked);
+    }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id !== 'regForm') return;
+      e.preventDefault();
+      const data = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        phone: document.getElementById('phone').value,
+        id_number: document.getElementById('id_number').value,
+        address: document.getElementById('address').value,
+        role: selectedRole
+      };
+      if (document.getElementById('behalfCheck').checked) {
+        data.on_behalf_of = document.getElementById('on_behalf_of').value;
+        data.behalf_details = document.getElementById('behalf_details').value;
+      }
+      if (selectedRole === 'worker') {
+        data.skills = selectedSkills.join(',');
+        data.hourly_rate = parseFloat(document.getElementById('hourly_rate').value) || null;
+        data.daily_rate = parseFloat(document.getElementById('daily_rate').value) || null;
+        data.portfolio = document.getElementById('portfolio').value;
+      }
+      if (selectedRole === 'service-team') {
+        data.team_name = document.getElementById('team_name').value;
+        data.team_description = document.getElementById('team_description').value;
+        data.team_members = teamMembers.filter(member => member.name || member.email || member.phone || member.skills || member.password).map(member => ({
+          name: member.name,
+          email: member.email,
+          password: member.password,
+          phone: member.phone,
+          skills: member.skills
+        }));
+      }
+      if (selectedRole === 'business') {
+        data.bio = document.getElementById('bio').value;
+      }
+      try {
+        await API('auth/register', { method: 'POST', body: JSON.stringify(data) });
+        toast('Registration successful! Please login.', 'success');
+        setTimeout(() => window.location.href = '/login.html', 1000);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

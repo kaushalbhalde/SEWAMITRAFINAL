@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Workers - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    let categories = [];
+    let nearbyJobs = [];
+    const defaultCenter = { lat: 12.9716, lng: 77.5946 };
+    const mapParams = new URLSearchParams(window.location.search);
+    const jobLocation = mapParams.get('location') || '';
+    const jobLat = parseFloat(mapParams.get('lat'));
+    const jobLng = parseFloat(mapParams.get('lng'));
+    (async function() {
+      const ok = await initPage('map', ['customer', 'worker', 'admin']);
+      if (!ok) return;
+      categories = await API('job-categories');
+      myLat = Number.isFinite(jobLat) ? jobLat : defaultCenter.lat;
+      myLng = Number.isFinite(jobLng) ? jobLng : defaultCenter.lng;
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="page-title">Find Workers Nearby</div>
+          <div class="card mb-16">
+            <div class="grid grid-3">
+              <div class="form-group" style="margin:0;">
+                <label>Filter by Skill</label>
+                <select id="skillFilter" onchange="loadMapData()">
+                  <option value="">All Skills</option>
+                  ${categories.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Radius (km)</label>
+                <select id="radiusFilter" onchange="loadMapData()">
+                  <option value="10">10 km</option>
+                  <option value="25">25 km</option>
+                  <option value="50" selected>50 km</option>
+                  <option value="100">100 km</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Your Location</label>
+                <button class="btn btn-secondary btn-sm" onclick="useMyLocation()">Use My Location</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="mapNotice" class="map-notice"></div>
+          <div id="google-map" class="map-container"></div>
+
+          <div class="card mb-16">
+            <div class="flex-between">
+              <h3 class="card-title">Nearby Work</h3>
+              <span id="jobCount" class="text-muted text-sm"></span>
+            </div>
+            <div id="jobsList" class="map-jobs-grid"></div>
+          </div>
+
+          <div class="card">
+            <div class="flex-between">
+              <h3 class="card-title">Available Workers</h3>
+              <span id="workerCount" class="text-muted text-sm"></span>
+            </div>
+            <div id="workersList"></div>
+          </div>
+        </div>
+      `;
+
+      loadMapData();
+    })();
+
+    let myLat = null, myLng = null;
+
+    function useMyLocation() {
+      if (!navigator.geolocation) { toast('Geolocation not supported', 'error'); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        myLat = pos.coords.latitude;
+        myLng = pos.coords.longitude;
+        toast('Location set: ' + myLat.toFixed(2) + ', ' + myLng.toFixed(2), 'success');
+        loadMapData();
+      }, () => toast('Could not get location', 'error'));
+    }
+
+    async function loadMapData() {
+      const skill = document.getElementById('skillFilter')?.value || '';
+      const radius = document.getElementById('radiusFilter')?.value || 25;
+      let url = 'workers/nearby?radius=' + radius + '&lat=' + myLat + '&lng=' + myLng;
+      if (skill) url += '&category=' + encodeURIComponent(skill);
+
+      try {
+        const [result, jobsResult] = await Promise.all([
+          API(url),
+          API('jobs/nearby?radius=' + radius + '&lat=' + myLat + '&lng=' + myLng)
+        ]);
+        nearbyJobs = jobsResult.jobs || [];
+        renderJobs(nearbyJobs, jobsResult.count || 0);
+        renderWorkers(result.workers, result.available_count);
+        await renderGoogleMap(nearbyJobs, result.workers);
+      } catch (e) {
+        document.getElementById('jobsList').innerHTML = '<p class="text-muted">Could not load nearby work.</p>';
+        document.getElementById('workersList').innerHTML = '<p class="text-muted">Could not load workers.</p>';
+        toast(e.message, 'error');
+      }
+    }
+
+    function renderJobs(jobs, totalCount) {
+      document.getElementById('jobCount').textContent = `${totalCount} nearby job(s)`;
+      const el = document.getElementById('jobsList');
+      if (!jobs.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">📍</div><p>No open jobs found in this radius.</p></div>';
+        return;
+      }
+      el.innerHTML = jobs.slice(0, 3).map(job => `
+        <article class="map-job-card">
+          <div class="map-job-icon">${job.category === 'Electrical' ? '⚡' : job.category === 'Plumbing' ? '🔧' : '🏠'}</div>
+          <div class="map-job-content">
+            <h4>${job.title}</h4>
+            <p>${job.location || 'Location provided privately'}</p>
+            <span>${job.distance_km === null ? 'Nearby' : job.distance_km + ' km away'} · ${job.budget ? fmtMoney(job.budget) : 'Negotiable'}</span>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="openJob(${job.id})">View</button>
+        </article>
+      `).join('');
+    }
+
+    function renderWorkers(workers, availableCount) {
+      document.getElementById('workerCount').textContent = myLat !== null
+        ? `Approximately ${availableCount} suitable worker(s) available nearby`
+        : `${availableCount} suitable worker(s) available; set a location to filter nearby`;
+      const el = document.getElementById('workersList');
+      if (!workers.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>No workers found in this area. Try expanding the radius.</p></div>';
+        return;
+      }
+      el.innerHTML = workers.map(w => `
+        <div class="card" style="border:1px solid var(--neutral-200);margin-bottom:8px;">
+          <div class="flex-between">
+            <div>
+              <strong>${w.name}</strong>
+              ${w.distance_km !== null ? `<span class="text-sm text-muted"> | ${w.distance_km} km away</span>` : ''}
+              <div class="mt-8">
+                ${(w.skills || []).map(s => `<span class="skill-tag">${s}</span>`).join('')}
+              </div>
+              <div class="text-sm text-muted mt-8">
+                ${w.hourly_rate ? 'Hourly: ' + fmtMoney(w.hourly_rate) : ''} ${w.daily_rate ? '| Daily: ' + fmtMoney(w.daily_rate) : ''}
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-secondary" onclick="window.location.href='/profile.html?uid=${w.id}'">View Profile</button>
+              <button class="btn btn-sm btn-primary" onclick="window.location.href='/messages.html?uid=${w.id}'">Message</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function renderGoogleMap(jobs, workers) {
+      const center = { lat: myLat, lng: myLng };
+      let config;
+      try { config = await API('config/maps'); } catch { config = {}; }
+      if (!config.google_maps_api_key) {
+        document.getElementById('mapNotice').innerHTML = 'Add <strong>GOOGLE_MAPS_API_KEY</strong> to enable interactive multi-marker maps. A Google Maps preview is shown below.';
+        document.getElementById('google-map').innerHTML = `<iframe title="Google Maps work area" loading="lazy" src="https://www.google.com/maps?q=${center.lat},${center.lng}&z=14&output=embed"></iframe>`;
+        return;
+      }
+      await loadGoogleMapsScript(config.google_maps_api_key);
+      const map = new google.maps.Map(document.getElementById('google-map'), {
+        center, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true,
+        styles: [{ featureType: 'poi.business', stylers: [{ visibility: 'off' }] }]
+      });
+      const infoWindow = new google.maps.InfoWindow();
+      jobs.slice(0, 20).forEach(job => {
+        const marker = new google.maps.Marker({ map, position: { lat: job.latitude, lng: job.longitude }, title: job.title, label: 'J' });
+        marker.addListener('click', () => {
+          infoWindow.setContent(`<strong>${job.title}</strong><br>${job.location || ''}<br>${job.budget ? fmtMoney(job.budget) : 'Negotiable'}`);
+          infoWindow.open({ map, anchor: marker });
+        });
+      });
+      workers.slice(0, 20).forEach((worker, index) => {
+        const angle = (index / Math.max(workers.length, 1)) * Math.PI * 2;
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat: center.lat + Math.cos(angle) * 0.004, lng: center.lng + Math.sin(angle) * 0.004 },
+          title: 'Available worker area',
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#16a34a', fillOpacity: 0.8, strokeColor: '#ffffff', strokeWeight: 2 }
+        });
+        marker.addListener('click', () => {
+          infoWindow.setContent('<strong>Available worker nearby</strong><br>Approximate area shown for privacy.');
+          infoWindow.open({ map, anchor: marker });
+        });
+      });
+    }
+
+    function loadGoogleMapsScript(apiKey) {
+      if (window.google?.maps) return Promise.resolve();
+      if (window.googleMapsPromise) return window.googleMapsPromise;
+      window.googleMapsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey);
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Google Maps could not load'));
+        document.head.appendChild(script);
+      });
+      return window.googleMapsPromise;
+    }
+
+    function openJob(jobId) { window.location.href = '/job-detail.html?id=' + jobId; }
+
+    function drawMap(workers) {
+      const canvas = document.getElementById('map-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.offsetWidth;
+      const h = canvas.height = 400;
+
+      // Background
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid lines
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+      // Roads
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, h * 0.4); ctx.lineTo(w, h * 0.35); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(w * 0.3, 0); ctx.lineTo(w * 0.35, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(w * 0.7, 0); ctx.lineTo(w * 0.65, h); ctx.stroke();
+
+      const locationLabel = document.getElementById('mapLocation');
+      if (locationLabel) {
+        locationLabel.textContent = jobLocation ? `Work location: ${jobLocation}` : 'Showing an approximate area only. Worker locations are not displayed publicly.';
+      }
+
+      // Work location or customer location
+      if (myLat !== null) {
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2563eb';
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'white';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(jobLocation ? 'Work' : 'You', w / 2 - 12, h / 2 + 3);
+      }
+
+      // Worker pins (approximate positions, not exact locations for privacy)
+      workers.forEach((wk, i) => {
+        const angle = (i / Math.max(workers.length, 1)) * Math.PI * 2;
+        const dist = 60 + (i % 3) * 30;
+        const cx = w / 2 + (myLat !== null ? Math.cos(angle) * dist : 80 + (i % 4) * 150);
+        const cy = h / 2 + (myLat !== null ? Math.sin(angle) * dist : 80 + (i % 3) * 100);
+
+        ctx.fillStyle = '#16a34a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Legend
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(10, 10, 140, 50);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.strokeRect(10, 10, 140, 50);
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath(); ctx.arc(25, 25, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.font = '11px sans-serif';
+      ctx.fillText(jobLocation ? 'Work location' : 'Your location', 38, 29);
+      ctx.fillStyle = '#16a34a';
+      ctx.beginPath(); ctx.arc(25, 45, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.fillText('Available workers', 38, 49);
+    }
+  </script>
+</body>
+</html>

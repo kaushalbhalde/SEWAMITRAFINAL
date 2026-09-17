@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Dashboard - SEWAMITRA</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="page"></div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    (async function() {
+      const ok = await initPage('dashboard', ['business']);
+      if (!ok) return;
+      const walletRes = await API('wallet');
+      const productsRes = await API('products/my');
+      const ordersRes = await API('orders');
+
+      document.getElementById('page').innerHTML += `
+        <div class="container">
+          <div class="dash-header">
+            <div>
+              <h2>Welcome, ${currentUser.name}</h2>
+              <div class="role-tag">Business Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
+            </div>
+            <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${productsRes.length}</div><div class="stat-label">Products</div></div>
+            <div class="stat-card"><div class="stat-value">${ordersRes.length}</div><div class="stat-label">Orders</div></div>
+            <div class="stat-card"><div class="stat-value">${ordersRes.filter(o => o.status === 'pending').length}</div><div class="stat-label">Pending Orders</div></div>
+            <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Wallet</div></div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('products')">My Products</div>
+            <div class="tab" onclick="switchTab('orders')">Orders</div>
+          </div>
+
+          <div id="tab-products" class="tab-content active">
+            <div id="productsList"></div>
+          </div>
+          <div id="tab-orders" class="tab-content">
+            <div id="ordersList"></div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="productModal">
+          <div class="modal">
+            <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
+            <h2>Add Product / Service</h2>
+            <form id="productForm">
+              <div class="form-group"><label>Product Name</label><input type="text" id="prodName" required placeholder="e.g. Paint supplies"></div>
+              <div class="form-group"><label>Description</label><textarea id="prodDesc" placeholder="Describe your product..."></textarea></div>
+              <div class="grid grid-2">
+                <div class="form-group"><label>Price (₹)</label><input type="number" id="prodPrice" required step="any"></div>
+                <div class="form-group"><label>Category</label><input type="text" id="prodCategory" placeholder="e.g. Tools, Materials"></div>
+              </div>
+              <div class="form-group"><label>Emoji / Icon (optional)</label><input type="text" id="prodIcon" placeholder="e.g. 🔨"></div>
+              <button type="submit" class="btn btn-primary btn-block">Add Product</button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      renderProducts();
+      renderOrders();
+
+      function renderProducts() {
+        const el = document.getElementById('productsList');
+        if (!productsRes.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>No products yet. Click "Add Product" to start selling.</p></div>';
+          return;
+        }
+        el.innerHTML = `<div class="grid grid-3">` + productsRes.map(p => `
+          <div class="product-card">
+            <div class="product-img">${p.image_url || '📦'}</div>
+            <div class="product-body">
+              <div class="product-name">${p.name}</div>
+              <div class="product-desc">${p.description || ''}</div>
+              <div class="product-price">${fmtMoney(p.price)}</div>
+              <div class="text-sm text-muted">Stock: ${p.stock}</div>
+            </div>
+          </div>
+        `).join('') + `</div>`;
+      }
+
+      function renderOrders() {
+        const el = document.getElementById('ordersList');
+        if (!ordersRes.length) {
+          el.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>No orders yet.</p></div>';
+          return;
+        }
+        el.innerHTML = `<div class="table-wrap"><table>
+          <tr><th>Order ID</th><th>Product</th><th>Customer</th><th>Qty</th><th>Total</th><th>Status</th><th>Action</th></tr>
+          ${ordersRes.map(o => `<tr>
+            <td>#${o.id}</td><td>${o.product_name}</td><td>${o.customer_name}</td>
+            <td>${o.quantity}</td><td>${fmtMoney(o.total_price)}</td><td>${statusBadge(o.status)}</td>
+            <td>
+              ${o.status === 'pending' ? `
+                <button class="btn btn-sm btn-success" onclick="updateOrder(${o.id}, 'confirmed')">Confirm</button>
+                <button class="btn btn-sm btn-danger" onclick="updateOrder(${o.id}, 'cancelled')">Cancel</button>
+              ` : ''}
+              ${o.status === 'confirmed' ? `<button class="btn btn-sm btn-primary" onclick="updateOrder(${o.id}, 'delivered')">Mark Delivered</button>` : ''}
+            </td>
+          </tr>`).join('')}
+        </table></div>`;
+      }
+    })();
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    function openProductModal() { document.getElementById('productModal').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function updateOrder(oid, status) {
+      try {
+        await API('orders/' + oid + '/status', { method: 'PUT', body: JSON.stringify({ status }) });
+        toast('Order ' + status, 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    document.addEventListener('submit', async e => {
+      if (e.target.id !== 'productForm') return;
+      e.preventDefault();
+      const icon = document.getElementById('prodIcon').value || '📦';
+      try {
+        await API('products', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('prodName').value,
+            description: document.getElementById('prodDesc').value,
+            price: parseFloat(document.getElementById('prodPrice').value),
+            category: document.getElementById('prodCategory').value,
+            image_url: icon
+          })
+        });
+        toast('Product added!', 'success');
+        closeModal('productModal');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    });
+  </script>
+</body>
+</html>
