@@ -224,6 +224,7 @@ function renderNavbar(active) {
     }
     links.push(`<a href="/messages.html" class="${active === 'messages' ? 'active' : ''}">Messages</a>`);
     links.push(`<a href="/profile.html" class="${active === 'profile' ? 'active' : ''}">Profile</a>`);
+    links.push(`<a href="/help.html" class="${active === 'help' ? 'active' : ''}">Help & Support</a>`);
     if (currentUser.role === 'admin') {
       links.push(`<a href="/admin.html" class="${active === 'admin' ? 'active' : ''}">Admin Panel</a>`);
     }
@@ -231,6 +232,7 @@ function renderNavbar(active) {
   } else {
     links.push(`<a href="/login.html">Login</a>`);
     links.push(`<a href="/register.html">Register</a>`);
+    links.push(`<a href="/help.html">Help & Support</a>`);
   }
   links.push(`<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch theme">🌙</button>`);
   return `

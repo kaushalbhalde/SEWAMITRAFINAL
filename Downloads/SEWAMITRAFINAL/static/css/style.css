@@ -799,6 +799,12 @@ body.dark-theme .impact-card {
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
+/* ---------- Help & Support styles ---------- */
+.help-search-suggestions { display:flex; gap:8px; flex-wrap:wrap; }
+.help-issue-list button { width:100%; text-align:left; padding:12px; border-radius:10px; border:1px solid var(--neutral-200); background:var(--neutral-50); }
+.help-step { padding:10px; border-radius:8px; background:linear-gradient(180deg,#fff,#fafafa); border:1px solid var(--neutral-200); }
+.chatbot-panel { max-width:360px; }
+
 @media (max-width: 768px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }
