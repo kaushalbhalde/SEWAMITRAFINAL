@@ -209,10 +209,12 @@ function renderNavbar(active) {
     if (currentUser.role === 'customer') {
       links.push(`<a href="/jobs.html" class="${active === 'jobs' ? 'active' : ''}">Jobs</a>`);
       links.push(`<a href="/map.html" class="${active === 'map' ? 'active' : ''}">Find Workers</a>`);
+      links.push(`<a href="/cooperative.html" class="${active === 'cooperative' ? 'active' : ''}">Cooperative Gigs</a>`);
       links.push(`<a href="/marketplace.html" class="${active === 'market' ? 'active' : ''}">Marketplace</a>`);
     }
     if (currentUser.role === 'worker' || currentUser.role === 'service-team') {
       links.push(`<a href="/jobs.html" class="${active === 'jobs' ? 'active' : ''}">Find Jobs</a>`);
+      links.push(`<a href="/cooperative.html" class="${active === 'cooperative' ? 'active' : ''}">Cooperative Gigs</a>`);
       links.push(`<a href="/groups.html" class="${active === 'groups' ? 'active' : ''}">Groups</a>`);
       links.push(`<a href="/committee.html" class="${active === 'committee' ? 'active' : ''}">Committee</a>`);
     }

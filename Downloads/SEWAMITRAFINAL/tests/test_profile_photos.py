@@ -94,6 +94,16 @@ class WorkerProfilePhotoTests(unittest.TestCase):
         self.assertIn('Smart Water Filter', names)
         conn.close()
 
+    def test_cooperative_gigs_page_exists(self):
+        with app_module.app.test_client() as client:
+            resp = client.get('/cooperative.html')
+            self.assertEqual(resp.status_code, 200)
+            html = resp.get_data(as_text=True)
+            self.assertIn('Cooperative Gigs', html)
+            self.assertIn('Community Projects', html)
+            self.assertIn('Join a Project', html)
+            self.assertIn('Donate Now', html)
+
 
 if __name__ == '__main__':
     unittest.main()
