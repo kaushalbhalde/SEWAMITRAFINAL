@@ -383,7 +383,12 @@ def init_db():
     demo_products = [
         ('LED Emergency Light', 'Rechargeable light for home repairs and power cuts.', 799, 'Electrical', '💡', 24),
         ('Professional Plumbing Kit', 'Compact toolkit with wrench, tape and fittings.', 1499, 'Tools', '🧰', 12),
-        ('Eco Home Cleaning Pack', 'Plant-based cleaners for kitchens and bathrooms.', 599, 'Cleaning', '🧼', 30)
+        ('Eco Home Cleaning Pack', 'Plant-based cleaners for kitchens and bathrooms.', 599, 'Cleaning', '🧼', 30),
+        ('Smart Water Filter', 'Compact filtration unit for kitchen water safety.', 2499, 'Home', '💧', 18),
+        ('Portable Drill Set', 'Cordless drill with bits for fast home fixes.', 1899, 'Tools', '🔧', 16),
+        ('Safety Helmet Kit', 'Protective headgear and gloves for renovation work.', 999, 'Safety', '🦺', 20),
+        ('Kitchen Cleaning Bundle', 'Deep-clean essentials for counters, sinks and tiles.', 699, 'Cleaning', '🫧', 25),
+        ('Garden Starter Pack', 'Seed mix, gloves and basic outdoor maintenance tools.', 1299, 'Gardening', '🌿', 14)
     ]
     for name, description, price, category, image_url, stock in demo_products:
         c.execute(
@@ -1619,7 +1624,7 @@ def list_products():
     conn = get_db()
     rows = conn.execute(
         '''SELECT p.*, u.name as business_name FROM products p
-           JOIN users u ON p.business_id = u.id ORDER BY p.created_at DESC'''
+           JOIN users u ON p.business_id = u.id ORDER BY RANDOM()'''
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])

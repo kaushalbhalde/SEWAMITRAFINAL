@@ -85,6 +85,15 @@ class WorkerProfilePhotoTests(unittest.TestCase):
         self.assertIn("u.role === 'worker' ? `", template)
         self.assertIn('Quick Details', template)
 
+    def test_marketplace_has_multiple_distinct_demo_products(self):
+        conn = app_module.get_db()
+        products = conn.execute('SELECT name FROM products ORDER BY name').fetchall()
+        names = [row['name'] for row in products]
+        self.assertGreater(len(names), 5)
+        self.assertIn('LED Emergency Light', names)
+        self.assertIn('Smart Water Filter', names)
+        conn.close()
+
 
 if __name__ == '__main__':
     unittest.main()
