@@ -1458,6 +1458,132 @@ tr:hover { background: var(--neutral-50); }
   margin: 2px;
 }
 
+.marketplace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 0.9fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.market-map-panel {
+  padding: 16px;
+}
+
+.market-map-shell {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  height: 360px;
+  background: #dbeafe;
+}
+
+.market-map-shell iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  filter: saturate(0.9) contrast(1.05);
+}
+
+.market-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  z-index: 2;
+}
+
+.market-pin span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+  font-size: 1.1rem;
+  border: 3px solid rgba(255,255,255,0.9);
+}
+
+.market-pin small {
+  background: rgba(15, 23, 42, 0.8);
+  color: white;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.market-legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  font-size: 0.75rem;
+  color: var(--neutral-600);
+}
+
+.market-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--primary);
+}
+
+.market-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.market-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.market-mini-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-50);
+}
+
+.market-mini-badge {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  font-size: 1rem;
+}
+
+.market-mini-badge.online {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+}
+
+.status-live {
+  color: #16a34a;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
 .product-card {
   background: white;
   border-radius: var(--radius);
@@ -1483,6 +1609,12 @@ tr:hover { background: var(--neutral-50); }
 .product-card .product-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
 .product-card .product-price { font-weight: 700; color: var(--success); font-size: 1rem; }
 .product-card .product-desc { font-size: 0.8rem; color: var(--neutral-500); margin: 4px 0; }
+
+@media (max-width: 900px) {
+  .marketplace-layout {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 640px) {
   html, body { max-width: 100%; overflow-x: hidden; }
