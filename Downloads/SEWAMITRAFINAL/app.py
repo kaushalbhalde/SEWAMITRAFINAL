@@ -1443,6 +1443,60 @@ def get_ratings(user_id):
     })
 
 
+@app.route('/api/ratings/<int:rating_id>', methods=['PUT'])
+@login_required
+def edit_rating(rating_id):
+    data = request.json or {}
+    conn = get_db()
+    c = conn.cursor()
+    existing = c.execute('SELECT * FROM ratings WHERE id = ?', (rating_id,)).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({'error': 'Rating not found'}), 404
+    if existing['rater_id'] != session.get('user_id'):
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    score = data.get('score')
+    review = data.get('review')
+    updates = []
+    params = []
+    if score is not None:
+        updates.append('score = ?')
+        params.append(score)
+    if review is not None:
+        updates.append('review = ?')
+        params.append(review)
+    if not updates:
+        conn.close()
+        return jsonify({'error': 'No changes provided'}), 400
+    params.append(rating_id)
+    c.execute(f"UPDATE ratings SET {', '.join(updates)} WHERE id = ?", tuple(params))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Rating updated'})
+
+
+@app.route('/api/ratings/<int:rating_id>', methods=['DELETE'])
+@login_required
+def delete_rating(rating_id):
+    conn = get_db()
+    c = conn.cursor()
+    existing = c.execute('SELECT * FROM ratings WHERE id = ?', (rating_id,)).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({'error': 'Rating not found'}), 404
+    user_id = session.get('user_id')
+    # allow rater or admin to delete
+    user = c.execute('SELECT role FROM users WHERE id = ?', (user_id,)).fetchone()
+    if existing['rater_id'] != user_id and (not user or user['role'] != 'admin'):
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    c.execute('DELETE FROM ratings WHERE id = ?', (rating_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Rating deleted'})
+
+
 # ---------------------------------------------------------------------------
 # SOS API
 # ---------------------------------------------------------------------------

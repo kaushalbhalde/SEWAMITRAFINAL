@@ -64,6 +64,7 @@
           </div>
           <p class="mt-16" style="line-height:1.7; white-space:pre-wrap;">${reviewText ? reviewText.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'No review text provided.'}</p>
           <div class="text-sm text-muted mt-8">${fmtDate(r.created_at)}</div>
+          ${currentUser && currentUser.id === r.rater_id ? `<div class="mt-8"><button class="btn btn-sm btn-secondary" onclick="editReview(${r.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteReview(${r.id})">Delete</button></div>` : ''}
         </article>
       `;
     }
@@ -188,6 +189,32 @@
           toast(err.message || 'Unable to add review.', 'error');
         }
       });
+    }
+
+    async function editReview(ratingId) {
+      try {
+        const res = await API('ratings/' + selectedWorkerId); // get current list
+        const rating = (res.ratings || []).find(r => r.id === ratingId);
+        if (!rating) { toast('Rating not found', 'error'); return; }
+        if (currentUser.id !== rating.rater_id) { toast('Unauthorized', 'error'); return; }
+        const newScore = parseInt(prompt('New rating (1-5):', String(rating.score || 5)), 10);
+        if (!newScore || newScore < 1 || newScore > 5) { toast('Invalid score', 'error'); return; }
+        const newText = prompt('Edit your review text:', rating.review || '');
+        if (newText === null) return;
+        await API('ratings/' + ratingId, { method: 'PUT', body: JSON.stringify({ score: newScore, review: newText }) });
+        toast('Review updated', 'success');
+        await renderReviewPage();
+      } catch (e) { toast(e.message || 'Unable to edit review', 'error'); }
+    }
+
+    async function deleteReview(ratingId) {
+      if (!confirm('Delete this review? This cannot be undone.')) return;
+      try {
+        await API('ratings/' + ratingId, { method: 'DELETE' });
+        toast('Review deleted', 'success');
+        await renderReviewPage();
+      } catch (e) { toast(e.message || 'Unable to delete review', 'error'); }
+    }
     }
   </script>
 </body>
