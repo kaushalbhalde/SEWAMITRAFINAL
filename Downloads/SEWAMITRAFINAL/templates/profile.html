@@ -65,8 +65,8 @@
                 ${isOwn ? '<button class="btn btn-primary btn-sm" onclick="openEditModal()">Edit Profile</button>' : ''}
                 ${isLoggedIn && currentUser.role === 'customer' && isOwn ? '<button class="btn btn-secondary btn-sm" onclick="window.location.href=\'/review.html\'">Reviews</button>' : ''}
                 ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="window.location.href='/messages.html?uid=${u.id}'">Message</button>` : ''}
-                  ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openComplaintModal(${u.id})">Report</button>` : ''}
-                
+                ${isLoggedIn && !isOwn && currentUser.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openComplaintModal(${u.id})">Report</button>` : ''}
+                  ${isLoggedIn && !isOwn ? `<button class="btn btn-primary btn-sm" onclick="startCallProfile(${u.id})">Call</button>` : ''}
               </div>
             </div>
 
@@ -263,7 +263,83 @@
       }
     });
     
-    
+    // Call from profile (simulated in-page call UI)
+    function showCallOverlayProfile({name, phone, outgoing=true}) {
+      const o = document.getElementById('callOverlayProfile');
+      if (!o) return;
+      document.getElementById('callNameProfile').textContent = name || 'Unknown';
+      document.getElementById('callPhoneProfile').textContent = phone || '';
+      document.getElementById('callStatusProfile').textContent = outgoing ? 'Calling…' : 'Incoming call…';
+      document.getElementById('callAcceptProfile').style.display = outgoing ? 'none' : 'inline-block';
+      document.getElementById('callDeclineProfile').textContent = outgoing ? 'Cancel' : 'Decline';
+      document.getElementById('callControlsProfile').style.display = 'none';
+      document.getElementById('callTimerProfile').textContent = '00:00';
+      callState.connected = false; callState.seconds = 0; callState.muted = false;
+      o.style.display = 'flex';
+      if (outgoing) {
+        clearTimeout(callState.autoConnectTimeout);
+        callState.autoConnectTimeout = setTimeout(() => connectCallProfile(), 3000);
+      }
+    }
+
+    function hideCallOverlayProfile() {
+      const o = document.getElementById('callOverlayProfile');
+      if (!o) return;
+      o.style.display = 'none';
+      clearInterval(callState.timer);
+      clearTimeout(callState.autoConnectTimeout);
+      callState.connected = false; callState.seconds = 0; callState.muted = false;
+    }
+
+    function connectCallProfile() {
+      callState.connected = true;
+      document.getElementById('callStatusProfile').textContent = 'Connected';
+      document.getElementById('callControlsProfile').style.display = 'flex';
+      document.getElementById('callAcceptProfile').style.display = 'none';
+      clearInterval(callState.timer);
+      callState.timer = setInterval(() => {
+        callState.seconds += 1;
+        document.getElementById('callTimerProfile').textContent = formatTimer(callState.seconds);
+      }, 1000);
+    }
+
+    function toggleMuteProfile() {
+      callState.muted = !callState.muted;
+      document.getElementById('callMuteProfile').textContent = callState.muted ? 'Unmute' : 'Mute';
+    }
+
+    function endCallProfile(reason) { hideCallOverlayProfile(); if (reason) toast(reason, 'info'); }
+
+    async function startCallProfile(uid) {
+      try {
+        const profile = await API('profile/' + uid);
+        const phone = profile.user && profile.user.phone ? profile.user.phone : '';
+        showCallOverlayProfile({name: profile.user.name, phone, outgoing: true});
+      } catch (e) { toast('Unable to start call', 'error'); }
+    }
   </script>
+  <div id="callOverlayProfile" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999;">
+    <div style="background:#fff;padding:18px;border-radius:12px;min-width:320px;max-width:420px;box-shadow:0 12px 32px rgba(0,0,0,0.25);margin:auto;text-align:center;">
+      <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px;" id="callNameProfile">Caller</div>
+      <div id="callPhoneProfile" class="text-sm text-muted" style="margin-bottom:10px"></div>
+      <div id="callStatusProfile" style="margin-bottom:12px;color:var(--neutral-600)">Calling…</div>
+      <div id="callAcceptProfile" style="margin-bottom:10px;">
+        <button class="btn btn-primary btn-sm" onclick="connectCallProfile()">Answer</button>
+        <button class="btn btn-outline btn-sm" id="callDeclineProfile" onclick="hideCallOverlayProfile()">Decline</button>
+      </div>
+      <div id="callControlsProfile" style="display:none;align-items:center;justify-content:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px;">
+          <div id="callTimerProfile" class="text-sm">00:00</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <button id="callMuteProfile" class="btn btn-outline btn-sm" onclick="toggleMuteProfile()">Mute</button>
+          <button class="btn btn-danger btn-sm" onclick="endCallProfile('Call ended')">End</button>
+        </div>
+      </div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="btn btn-ghost btn-sm" onclick="hideCallOverlayProfile()">Close</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

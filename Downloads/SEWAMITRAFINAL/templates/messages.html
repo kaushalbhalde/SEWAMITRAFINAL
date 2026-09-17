@@ -142,39 +142,115 @@
       } catch (e) { toast(e.message, 'error'); }
     }
 
-    // --- Call feature ---
-    function closeCallModal() {
-      const m = document.getElementById('callModal');
-      if (m) m.style.display = 'none';
+    // --- Call feature (simulated in-page call UI) ---
+    let callState = {
+      timer: null,
+      seconds: 0,
+      connected: false,
+      muted: false,
+      autoConnectTimeout: null
+    };
+
+    function formatTimer(s) {
+      const mm = String(Math.floor(s/60)).padStart(2,'0');
+      const ss = String(s%60).padStart(2,'0');
+      return mm + ':' + ss;
+    }
+
+    function showCallOverlay({name, phone, outgoing=true}) {
+      const o = document.getElementById('callOverlay');
+      if (!o) return;
+      document.getElementById('callName').textContent = name || 'Unknown';
+      document.getElementById('callPhone').textContent = phone || '';
+      document.getElementById('callStatus').textContent = outgoing ? 'Calling…' : 'Incoming call…';
+      document.getElementById('callAccept').style.display = outgoing ? 'none' : 'inline-block';
+      document.getElementById('callDecline').textContent = outgoing ? 'Cancel' : 'Decline';
+      document.getElementById('callControls').style.display = 'none';
+      document.getElementById('callTimer').textContent = '00:00';
+      callState.connected = false;
+      callState.seconds = 0;
+      callState.muted = false;
+      o.style.display = 'flex';
+
+      // auto-connect simulation for outgoing calls
+      if (outgoing) {
+        clearTimeout(callState.autoConnectTimeout);
+        callState.autoConnectTimeout = setTimeout(() => {
+          connectCall();
+        }, 3000);
+      }
+    }
+
+    function hideCallOverlay() {
+      const o = document.getElementById('callOverlay');
+      if (!o) return;
+      o.style.display = 'none';
+      clearInterval(callState.timer);
+      clearTimeout(callState.autoConnectTimeout);
+      callState.connected = false; callState.seconds = 0; callState.muted = false;
+    }
+
+    function connectCall() {
+      callState.connected = true;
+      document.getElementById('callStatus').textContent = 'Connected';
+      document.getElementById('callControls').style.display = 'flex';
+      document.getElementById('callAccept').style.display = 'none';
+      // start timer
+      clearInterval(callState.timer);
+      callState.timer = setInterval(() => {
+        callState.seconds += 1;
+        document.getElementById('callTimer').textContent = formatTimer(callState.seconds);
+      }, 1000);
+    }
+
+    function toggleMute() {
+      callState.muted = !callState.muted;
+      document.getElementById('callMute').textContent = callState.muted ? 'Unmute' : 'Mute';
+    }
+
+    function endCall(reason) {
+      // optionally log the call via API
+      hideCallOverlay();
+      if (reason) toast(reason, 'info');
     }
 
     async function startCall() {
-      if (!activeChatId) return;
+      if (!activeChatId) return toast('No active chat', 'error');
       try {
         const profile = await API('profile/' + activeChatId);
-        const phone = (profile.user && profile.user.phone) ? profile.user.phone : null;
-        const modal = document.getElementById('callModal');
-        if (!modal) return;
-        const info = document.getElementById('callInfo');
-        const link = document.getElementById('callLink');
-        if (phone) {
-          info.textContent = 'Call ' + profile.user.name + ' at ' + phone;
-          link.href = 'tel:' + phone.replace(/\s+/g, '');
-          link.style.display = 'inline-block';
-        } else {
-          info.textContent = 'No phone number available for this user.';
-          link.style.display = 'none';
-        }
-        modal.style.display = 'flex';
-      } catch (e) { toast('Unable to fetch profile for call', 'error'); }
+        const phone = (profile.user && profile.user.phone) ? profile.user.phone : '';
+        showCallOverlay({name: profile.user.name, phone, outgoing: true});
+      } catch (e) { toast('Unable to start call', 'error'); }
+    }
+
+    function acceptCall() {
+      connectCall();
+    }
+
+    function declineCall() {
+      endCall('Call ended');
     }
   </script>
-  <div id="callModal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);">
-    <div style="background:#fff;padding:16px;border-radius:8px;min-width:300px;max-width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2);margin:auto;">
-      <div id="callInfo" style="margin-bottom:12px">Preparing call...</div>
-      <div style="text-align:right">
-        <a id="callLink" class="btn btn-primary btn-sm" href="#" style="display:none;margin-right:8px">Call via phone</a>
-        <button class="btn btn-outline btn-sm" onclick="closeCallModal()">Close</button>
+  <div id="callOverlay" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999;">
+    <div style="background:#fff;padding:18px;border-radius:12px;min-width:320px;max-width:420px;box-shadow:0 12px 32px rgba(0,0,0,0.25);margin:auto;text-align:center;">
+      <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px;" id="callName">Caller</div>
+      <div id="callPhone" class="text-sm text-muted" style="margin-bottom:10px"></div>
+      <div id="callStatus" style="margin-bottom:12px;color:var(--neutral-600)">Calling…</div>
+      <div id="callAccept" style="margin-bottom:10px;">
+        <button class="btn btn-primary btn-sm" onclick="acceptCall()">Answer</button>
+        <button class="btn btn-outline btn-sm" onclick="declineCall()">Decline</button>
+      </div>
+      <div id="callControls" style="display:none;align-items:center;justify-content:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px;">
+          <div id="callTimer" class="text-sm">00:00</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <button id="callMute" class="btn btn-outline btn-sm" onclick="toggleMute()">Mute</button>
+          <button class="btn btn-danger btn-sm" onclick="endCall('Call ended')">End</button>
+        </div>
+      </div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="btn btn-ghost btn-sm" onclick="hideCallOverlay()">Close</button>
       </div>
     </div>
   </div>
