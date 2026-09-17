@@ -28,10 +28,28 @@
             <button class="btn btn-secondary" id="donateNowBtn">Donate Now</button>
           </div>
 
+          <section class="co-op-overview-grid">
+            <article class="co-op-overview-card">
+              <div class="co-op-icon">🤝</div>
+              <h3>Volunteer</h3>
+              <p>Help with cleanup, repair work, and community drives.</p>
+            </article>
+            <article class="co-op-overview-card">
+              <div class="co-op-icon">🛠️</div>
+              <h3>Offer Skills</h3>
+              <p>Share expertise in tutoring, repair, design, or training.</p>
+            </article>
+            <article class="co-op-overview-card">
+              <div class="co-op-icon">💛</div>
+              <h3>Fundraise</h3>
+              <p>Support local needs with donations and campaign backing.</p>
+            </article>
+          </section>
+
           <section class="co-op-participation">
             <div class="co-op-participation-card">
               <h3>Participate in a community initiative</h3>
-              <p>Choose how you want to contribute and get matched with the right local opportunity.</p>
+              <p>Choose how you want to contribute and match with the right project.</p>
               <form id="cooperativeForm">
                 <div class="grid grid-2">
                   <div class="form-group">
@@ -188,31 +206,21 @@
             </div>
           </section>
 
-          <div class="co-op-actions">
-            <button class="btn btn-primary" id="finalJoinBtn">Join a Project</button>
-            <button class="btn btn-secondary" id="finalDonateBtn">Donate Now</button>
-          </div>
         </main>
       `;
 
       document.getElementById('joinProjectBtn').addEventListener('click', () => {
         document.getElementById('panel-volunteer').scrollIntoView({ behavior: 'smooth', block: 'start' });
         document.querySelector('[data-tab="volunteer"]').click();
+        document.getElementById('projectType').value = 'volunteer';
         toast('Volunteer and skills opportunities are ready to join.', 'success');
       });
 
       document.getElementById('donateNowBtn').addEventListener('click', () => {
         document.getElementById('panel-fundraising').scrollIntoView({ behavior: 'smooth', block: 'start' });
         document.querySelector('[data-tab="fundraising"]').click();
+        document.getElementById('projectType').value = 'fundraise';
         toast('Fundraising campaigns are now visible.', 'success');
-      });
-
-      document.getElementById('finalJoinBtn').addEventListener('click', () => {
-        document.getElementById('joinProjectBtn').click();
-      });
-
-      document.getElementById('finalDonateBtn').addEventListener('click', () => {
-        document.getElementById('donateNowBtn').click();
       });
 
       document.getElementById('cooperativeForm').addEventListener('submit', (event) => {
