@@ -131,13 +131,25 @@
                 ${j.description ? `<p class="text-sm text-muted">${j.description}</p>` : ''}
                 ${j.location ? `<p class="text-sm text-muted">📍 ${j.location}</p>` : ''}
               </div>
-              <div class="text-right">
+                <div class="text-right">
                 <div class="job-budget">${j.budget ? fmtMoney(j.budget) : 'Negotiable'}</div>
                 <button class="btn btn-sm btn-secondary mt-8" onclick="viewJob(${j.id})">View</button>
+                ${j.status !== 'cancelled' && j.status !== 'completed' ? `<button class="btn btn-sm btn-danger mt-8" onclick="cancelMyJob(${j.id})">Cancel</button>` : ''}
               </div>
             </div>
           </div>
         `).join('');
+      }
+
+      async function cancelMyJob(jobId) {
+        const reason = prompt('Reason for cancelling this job (optional):', '');
+        if (reason === null) return;
+        if (!confirm('Cancel this job?')) return;
+        try {
+          await API('jobs/' + jobId + '/cancel', { method: 'POST', body: JSON.stringify({ reason }) });
+          toast('Job cancelled', 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } catch (e) { toast(e.message, 'error'); }
       }
 
       function renderAssignments() {

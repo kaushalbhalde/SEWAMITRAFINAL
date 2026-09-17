@@ -177,6 +177,17 @@ def init_db():
         FOREIGN KEY (job_id) REFERENCES jobs(id)
     );
 
+    CREATE TABLE IF NOT EXISTS job_cancellations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id INTEGER,
+        assignment_id INTEGER,
+        cancelled_by TEXT NOT NULL,
+        reason TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (job_id) REFERENCES jobs(id),
+        FOREIGN KEY (assignment_id) REFERENCES job_assignments(id)
+    );
+
     CREATE TABLE IF NOT EXISTS wallets (
         user_id INTEGER PRIMARY KEY,
         balance REAL DEFAULT 0,
@@ -916,6 +927,46 @@ def update_job_status(job_id):
     return jsonify({'message': 'Status updated'})
 
 
+@app.route('/api/jobs/<int:job_id>/cancel', methods=['POST'])
+@login_required
+def cancel_job(job_id):
+    data = request.json or {}
+    reason = data.get('reason', '')
+    user = current_user()
+    conn = get_db()
+    c = conn.cursor()
+    job = c.execute('SELECT * FROM jobs WHERE id = ?', (job_id,)).fetchone()
+    if not job:
+        conn.close()
+        return jsonify({'error': 'Job not found'}), 404
+    if user['role'] != 'customer' or job['customer_id'] != user['id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    if job['status'] in ('cancelled', 'completed'):
+        conn.close()
+        return jsonify({'error': 'Job cannot be cancelled'}), 400
+
+    # If there's an active assignment, cancel it and refund the held payment
+    assignment = c.execute('SELECT * FROM job_assignments WHERE job_id = ? AND status IN ("in_progress","pending_completion","assigned")', (job_id,)).fetchone()
+    if assignment:
+        c.execute("UPDATE job_assignments SET status = 'cancelled_by_customer' WHERE id = ?", (assignment['id'],))
+        # Refund held payment back to customer's balance
+        try:
+            c.execute('UPDATE wallets SET balance = balance + ?, held_balance = held_balance - ? WHERE user_id = ?', (assignment['agreed_price'], assignment['agreed_price'], user['id']))
+            c.execute('''INSERT INTO transactions (user_id, amount, type, description, status, related_job_id)
+                         VALUES (?,?, 'refund', 'Refund due to job cancellation', 'completed', ?)''',
+                      (user['id'], assignment['agreed_price'], job_id))
+        except Exception:
+            pass
+
+    c.execute("UPDATE jobs SET status = 'cancelled' WHERE id = ?", (job_id,))
+    c.execute('INSERT INTO job_cancellations (job_id, assignment_id, cancelled_by, reason) VALUES (?,?,?,?)',
+              (job_id, assignment['id'] if assignment else None, 'customer', reason))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Job cancelled'})
+
+
 # ---------------------------------------------------------------------------
 # JOB APPLICATIONS & NEGOTIATIONS
 # ---------------------------------------------------------------------------
@@ -1211,6 +1262,50 @@ def complete_assignment(assignment_id):
 
     conn.close()
     return jsonify({'error': 'Unauthorized'}), 403
+
+
+@app.route('/api/assignments/<int:assignment_id>/cancel', methods=['POST'])
+@login_required
+@role_required('worker')
+def cancel_assignment(assignment_id):
+    data = request.json or {}
+    reason = data.get('reason', '')
+    user = current_user()
+    conn = get_db()
+    c = conn.cursor()
+    assignment = c.execute('SELECT * FROM job_assignments WHERE id = ?', (assignment_id,)).fetchone()
+    if not assignment:
+        conn.close()
+        return jsonify({'error': 'Assignment not found'}), 404
+    if assignment['worker_id'] != user['id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    if assignment['status'] not in ('in_progress', 'assigned'):
+        conn.close()
+        return jsonify({'error': 'This assignment cannot be cancelled at this stage'}), 400
+
+    # Mark assignment cancelled by worker
+    c.execute("UPDATE job_assignments SET status = 'cancelled_by_worker' WHERE id = ?", (assignment_id,))
+    # Re-open the job so others can apply
+    c.execute('UPDATE jobs SET status = ? WHERE id = ?', ('open', assignment['job_id']))
+
+    # Refund held payment to customer (move held_balance back to balance)
+    job = c.execute('SELECT * FROM jobs WHERE id = ?', (assignment['job_id'],)).fetchone()
+    if job:
+        customer_id = job['customer_id']
+        try:
+            c.execute('UPDATE wallets SET balance = balance + ?, held_balance = held_balance - ? WHERE user_id = ?', (assignment['agreed_price'], assignment['agreed_price'], customer_id))
+            c.execute('''INSERT INTO transactions (user_id, amount, type, description, status, related_job_id)
+                         VALUES (?,?, 'refund', 'Refund due to worker cancellation', 'completed', ?)''',
+                      (customer_id, assignment['agreed_price'], assignment['job_id']))
+        except Exception:
+            pass
+
+    c.execute('INSERT INTO job_cancellations (job_id, assignment_id, cancelled_by, reason) VALUES (?,?,?,?)',
+              (assignment['job_id'], assignment_id, 'worker', reason))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Assignment cancelled by worker'})
 
 
 # ---------------------------------------------------------------------------

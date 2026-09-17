@@ -113,9 +113,10 @@
                 ${a.status === 'in_progress' ? '<p class="text-sm text-muted">Mark as done when you finish the work.</p>' : ''}
                 ${a.status === 'pending_completion' ? '<p class="text-sm" style="color:var(--warning);">Waiting for customer to confirm and release payment</p>' : ''}
               </div>
-              <div>
+                <div>
                 ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-success" onclick="markDone(${a.id})">Mark as Done</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${a.customer_id}'">Message</button>
+                ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-danger" onclick="cancelAssignment(${a.id})">Cancel Assignment</button>` : ''}
               </div>
             </div>
           </div>
@@ -160,6 +161,18 @@
       try {
         await API('assignments/' + assignmentId + '/complete', { method: 'POST' });
         toast('Marked as done! Waiting for customer confirmation.', 'success');
+        setTimeout(() => window.location.reload(), 800);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function cancelAssignment(assignmentId) {
+      const reason = prompt('Reason for cancelling this assignment (required):', '');
+      if (reason === null) return;
+      if (!reason.trim()) { alert('Please provide a reason for cancellation'); return; }
+      if (!confirm('Are you sure you want to cancel this assignment? This will reopen the job and refund the customer.')) return;
+      try {
+        await API('assignments/' + assignmentId + '/cancel', { method: 'POST', body: JSON.stringify({ reason }) });
+        toast('Assignment cancelled', 'success');
         setTimeout(() => window.location.reload(), 800);
       } catch (e) { toast(e.message, 'error'); }
     }
