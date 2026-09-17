@@ -113,15 +113,6 @@ def init_db():
         icon TEXT DEFAULT ''
     );
 
-    CREATE TABLE IF NOT EXISTS help_articles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        body TEXT,
-        category TEXT,
-        tags TEXT,
-        created_at TEXT DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_id INTEGER NOT NULL,
@@ -226,26 +217,10 @@ def init_db():
         job_id INTEGER,
         subject TEXT,
         description TEXT,
-        status TEXT DEFAULT 'submitted',
+        status TEXT DEFAULT 'open',
         resolution TEXT,
-        complaint_uuid TEXT UNIQUE,
-        evidence TEXT DEFAULT '[]',
-        preferred_resolution TEXT,
-        priority TEXT DEFAULT 'LOW',
-        assigned_to INTEGER,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (complainant_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS complaint_notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        complaint_id INTEGER NOT NULL,
-        author_id INTEGER NOT NULL,
-        note TEXT,
-        internal INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (complaint_id) REFERENCES complaints(id),
-        FOREIGN KEY (author_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS committee_reports (
@@ -467,31 +442,9 @@ def init_db():
             (demo_job_ids[1], demo_ids['customer@bridge.local'], demo_ids['worker2@bridge.local'], 5, 'Quick, professional and tidy.')
         )
 
-    # Seed help articles
-    articles = [
-        ('Booking a Service', 'If your service was not accepted, try checking your job details and re-posting or contacting support.', 'Booking', 'booking,service'),
-        ('Payment failed but money deducted', 'If your payment failed but money was deducted, check your wallet transactions. If unresolved, raise a complaint from Help & Support.', 'Payment', 'payment,refund'),
-        ('Provider didn\'t arrive', 'First contact the assigned provider via Messages. If the provider does not respond, raise a complaint and request a re-assignment.', 'Provider', 'provider,late')
-    ]
-    for title, body, category, tags in articles:
-        c.execute('INSERT OR IGNORE INTO help_articles (title, body, category, tags) VALUES (?,?,?,?)', (title, body, category, tags))
-
     columns = [col[1] for col in conn.execute('PRAGMA table_info(worker_profiles)').fetchall()]
     if 'previous_work_photos' not in columns:
         conn.execute("ALTER TABLE worker_profiles ADD COLUMN previous_work_photos TEXT DEFAULT '[]'")
-
-    # Ensure complaints table has new columns when upgrading existing DB
-    comp_cols = [col[1] for col in conn.execute('PRAGMA table_info(complaints)').fetchall()]
-    if 'complaint_uuid' not in comp_cols:
-        conn.execute("ALTER TABLE complaints ADD COLUMN complaint_uuid TEXT")
-    if 'evidence' not in comp_cols:
-        conn.execute("ALTER TABLE complaints ADD COLUMN evidence TEXT DEFAULT '[]'")
-    if 'preferred_resolution' not in comp_cols:
-        conn.execute("ALTER TABLE complaints ADD COLUMN preferred_resolution TEXT")
-    if 'priority' not in comp_cols:
-        conn.execute("ALTER TABLE complaints ADD COLUMN priority TEXT DEFAULT 'LOW'")
-    if 'assigned_to' not in comp_cols:
-        conn.execute("ALTER TABLE complaints ADD COLUMN assigned_to INTEGER")
 
     conn.commit()
     conn.close()
@@ -773,28 +726,6 @@ def get_categories():
         GROUP BY name
         ORDER BY name
     ''').fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
-
-
-@app.route('/api/help/articles', methods=['GET'])
-def list_help_articles():
-    conn = get_db()
-    rows = conn.execute('SELECT id, title, category, tags FROM help_articles ORDER BY created_at DESC').fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
-
-
-@app.route('/api/help/search', methods=['GET'])
-def search_help_articles():
-    q = (request.args.get('q') or '').strip()
-    conn = get_db()
-    if not q:
-        rows = conn.execute('SELECT id, title, category, tags FROM help_articles ORDER BY created_at DESC LIMIT 10').fetchall()
-    else:
-        pattern = f'%{q}%'
-        rows = conn.execute('''SELECT id, title, category, tags FROM help_articles
-                               WHERE title LIKE ? OR body LIKE ? OR tags LIKE ? ORDER BY created_at DESC LIMIT 20''', (pattern, pattern, pattern)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -1405,39 +1336,19 @@ def resolve_sos(sos_id):
 @app.route('/api/complaints', methods=['POST'])
 @login_required
 def create_complaint():
-    # Accept JSON or multipart/form-data (for uploads)
-    is_multipart = request.mimetype == 'multipart/form-data'
-    payload = request.form.to_dict() if is_multipart else (request.json or {})
-    files = request.files.getlist('evidence') if is_multipart else []
-
-    evidence_paths = []
-    for f in files:
-        if not f or not f.filename:
-            continue
-        filename = f"complaint_{secrets.token_hex(8)}_{os.path.basename(f.filename)}"
-        dest = os.path.join(UPLOAD_FOLDER, filename)
-        f.save(dest)
-        evidence_paths.append(f'/static/uploads/previous-work/{filename}')
-
+    data = request.json
     conn = get_db()
     c = conn.cursor()
-    uuid = secrets.token_hex(8)
-    preferred_resolution = payload.get('preferred_resolution')
-    priority = payload.get('priority') or 'LOW'
     c.execute(
-        '''INSERT INTO complaints (complainant_id, respondent_id, job_id, subject, description,
-           complaint_uuid, evidence, preferred_resolution, priority, status)
-           VALUES (?,?,?,?,?,?,?,?,?, 'submitted')''',
-        (
-            session['user_id'], payload.get('respondent_id'), payload.get('job_id'),
-            payload.get('subject', ''), payload.get('description', ''), uuid,
-            json.dumps(evidence_paths), preferred_resolution, priority
-        )
+        '''INSERT INTO complaints (complainant_id, respondent_id, job_id, subject, description)
+           VALUES (?,?,?,?,?)''',
+        (session['user_id'], data.get('respondent_id'), data.get('job_id'),
+         data.get('subject', ''), data.get('description', ''))
     )
     cid = c.lastrowid
     conn.commit()
     conn.close()
-    return jsonify({'message': 'Complaint filed', 'complaint_id': cid, 'complaint_uuid': uuid}), 201
+    return jsonify({'message': 'Complaint filed', 'complaint_id': cid}), 201
 
 
 @app.route('/api/complaints', methods=['GET'])
@@ -1479,76 +1390,6 @@ def resolve_complaint(cid):
     conn.commit()
     conn.close()
     return jsonify({'message': 'Complaint resolved'})
-
-
-@app.route('/api/complaints/<int:cid>', methods=['GET'])
-@login_required
-def get_complaint(cid):
-    conn = get_db()
-    row = conn.execute(
-        '''SELECT c.*, u.name as complainant_name, r.name as respondent_name
-           FROM complaints c
-           JOIN users u ON c.complainant_id = u.id
-           LEFT JOIN users r ON c.respondent_id = r.id WHERE c.id = ?''',
-        (cid,)
-    ).fetchone()
-    if not row:
-        conn.close()
-        return jsonify({'error': 'Complaint not found'}), 404
-    notes = conn.execute('SELECT * FROM complaint_notes WHERE complaint_id = ? ORDER BY created_at ASC', (cid,)).fetchall()
-    conn.close()
-    out = dict(row)
-    try:
-        out['evidence'] = json.loads(out.get('evidence') or '[]')
-    except Exception:
-        out['evidence'] = []
-    out['notes'] = [dict(n) for n in notes]
-    return jsonify(out)
-
-
-@app.route('/api/complaints/<int:cid>/status', methods=['PUT'])
-@login_required
-@role_required('admin', 'service-team')
-def update_complaint_status(cid):
-    data = request.json or {}
-    status = data.get('status')
-    assigned_to = data.get('assigned_to')
-    priority = data.get('priority')
-    conn = get_db()
-    if assigned_to:
-        conn.execute('UPDATE complaints SET assigned_to = ? WHERE id = ?', (assigned_to, cid))
-    if priority:
-        conn.execute('UPDATE complaints SET priority = ? WHERE id = ?', (priority, cid))
-    if status:
-        conn.execute('UPDATE complaints SET status = ? WHERE id = ?', (status, cid))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Complaint updated'})
-
-
-@app.route('/api/complaints/<int:cid>/note', methods=['POST'])
-@login_required
-def add_complaint_note(cid):
-    data = request.json or {}
-    note = data.get('note', '')
-    internal = 1 if data.get('internal', True) else 0
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('INSERT INTO complaint_notes (complaint_id, author_id, note, internal) VALUES (?,?,?,?)',
-              (cid, session['user_id'], note, internal))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Note added'})
-
-
-@app.route('/api/complaints/<int:cid>/reopen', methods=['POST'])
-@login_required
-def reopen_complaint(cid):
-    conn = get_db()
-    conn.execute("UPDATE complaints SET status = 'reopened' WHERE id = ?", (cid,))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Complaint reopened'})
 
 
 # ---------------------------------------------------------------------------

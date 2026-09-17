@@ -224,7 +224,6 @@ function renderNavbar(active) {
     }
     links.push(`<a href="/messages.html" class="${active === 'messages' ? 'active' : ''}">Messages</a>`);
     links.push(`<a href="/profile.html" class="${active === 'profile' ? 'active' : ''}">Profile</a>`);
-    links.push(`<a href="/help.html" class="${active === 'help' ? 'active' : ''}">Help & Support</a>`);
     if (currentUser.role === 'admin') {
       links.push(`<a href="/admin.html" class="${active === 'admin' ? 'active' : ''}">Admin Panel</a>`);
     }
@@ -232,7 +231,6 @@ function renderNavbar(active) {
   } else {
     links.push(`<a href="/login.html">Login</a>`);
     links.push(`<a href="/register.html">Register</a>`);
-    links.push(`<a href="/help.html">Help & Support</a>`);
   }
   links.push(`<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch theme">🌙</button>`);
   return `
@@ -258,6 +256,40 @@ function renderChatFab() {
   return `
     <button class="chat-fab" id="chatFab" onclick="toggleChatbot()" title="Chat support">💬</button>
   `;
+}
+
+function renderHelpFab() {
+  return `
+    <button class="help-fab" id="helpFab" onclick="toggleHelpPanel()" title="Help & Support">❓</button>
+  `;
+}
+
+function toggleHelpPanel() {
+  let panel = document.getElementById('helpPanel');
+  if (!panel) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="helpPanel" class="help-panel">
+        <div class="help-header">
+          <div>
+            <strong>Help & Support</strong>
+            <div class="help-sub">Get quick help or contact us</div>
+          </div>
+          <button class="help-close" onclick="toggleHelpPanel()" aria-label="Close help">×</button>
+        </div>
+        <div class="help-body">
+          <ul class="help-list">
+            <li><a href="/review.html">FAQ & Guides</a></li>
+            <li><a href="mailto:support@sewamitra.local?subject=Help%20Request">Contact Support</a></li>
+            <li><a href="/messages.html">Message Support Team</a></li>
+            <li><button onclick="toggleChatbot();toggleHelpPanel();">Start Live Chat</button></li>
+          </ul>
+        </div>
+      </div>
+    `);
+    return;
+  }
+
+  panel.classList.toggle('hidden');
 }
 
 function getChatbotReply(input) {
@@ -361,7 +393,7 @@ async function doLogout() {
 
 function injectLayout(activePage) {
   document.body.insertAdjacentHTML('afterbegin', renderNavbar(activePage) + renderLangBar());
-  document.body.insertAdjacentHTML('beforeend', renderChatFab());
+  document.body.insertAdjacentHTML('beforeend', renderChatFab() + renderHelpFab());
 }
 
 async function initPage(activePage, requiredRoles) {
