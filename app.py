@@ -2102,6 +2102,34 @@ def get_profile(user_id):
     profile = None
     if user['role'] == 'worker':
         profile = conn.execute('SELECT * FROM worker_profiles WHERE user_id = ?', (user_id,)).fetchone()
+    customer_details = None
+    if user['role'] == 'customer':
+        job_summary = conn.execute(
+            '''SELECT COUNT(*) AS total_jobs,
+                      SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_jobs,
+                      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_jobs
+               FROM jobs WHERE customer_id = ?''',
+            (user_id,)
+        ).fetchone()
+        active_services = conn.execute(
+            '''SELECT COUNT(*) FROM job_assignments ja
+               JOIN jobs j ON j.id = ja.job_id
+               WHERE j.customer_id = ? AND ja.status IN ('in_progress', 'pending_completion')''',
+            (user_id,)
+        ).fetchone()[0]
+        latest_job = conn.execute(
+            '''SELECT location FROM jobs
+               WHERE customer_id = ? AND location IS NOT NULL AND TRIM(location) != ''
+               ORDER BY created_at DESC LIMIT 1''',
+            (user_id,)
+        ).fetchone()
+        customer_details = {
+            'total_jobs': job_summary['total_jobs'] or 0,
+            'open_jobs': job_summary['open_jobs'] or 0,
+            'completed_jobs': job_summary['completed_jobs'] or 0,
+            'active_services': active_services or 0,
+            'service_area': latest_job['location'] if latest_job else ''
+        }
     ratings = conn.execute(
         '''SELECT r.*, u.name as rater_name FROM ratings r
            JOIN users u ON r.rater_id = u.id WHERE r.ratee_id = ? ORDER BY r.created_at DESC''',
@@ -2112,6 +2140,7 @@ def get_profile(user_id):
     return jsonify({
         'user': dict(user),
         'worker_profile': normalize_worker_profile(profile),
+        'customer_details': customer_details,
         'ratings': [dict(r) for r in ratings],
         'avg_rating': round(avg['avg'], 1) if avg['avg'] else 0,
         'rating_count': avg['count']

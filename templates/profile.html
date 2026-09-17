@@ -94,6 +94,19 @@
                   ` : '<div class="text-muted text-sm">This profile does not have worker details yet.</div>'}
                 </div>
               ` : ''}
+
+              ${u.role === 'customer' ? `
+                <div class="profile-info-block customer-profile-details">
+                  <h3>Customer Details</h3>
+                  <div class="profile-info-list compact">
+                    <div class="profile-info-item"><div class="icon">📋</div><div><strong>Jobs posted:</strong> ${profileData.customer_details.total_jobs}</div></div>
+                    <div class="profile-info-item"><div class="icon">🔎</div><div><strong>Open requests:</strong> ${profileData.customer_details.open_jobs}</div></div>
+                    <div class="profile-info-item"><div class="icon">✅</div><div><strong>Completed jobs:</strong> ${profileData.customer_details.completed_jobs}</div></div>
+                    <div class="profile-info-item"><div class="icon">🛠️</div><div><strong>Active services:</strong> ${profileData.customer_details.active_services}</div></div>
+                    ${profileData.customer_details.service_area ? `<div class="profile-info-item"><div class="icon">📍</div><div><strong>Service area:</strong> ${profileData.customer_details.service_area}</div></div>` : ''}
+                  </div>
+                </div>
+              ` : ''}
             </div>
 
             ${wp && (wp.portfolio || previousWorkPhotos.length) ? `
