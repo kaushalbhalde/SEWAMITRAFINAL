@@ -101,6 +101,8 @@ class WorkerProfilePhotoTests(unittest.TestCase):
             html = resp.get_data(as_text=True)
             self.assertIn('Cooperative Gigs', html)
             self.assertIn('Community Projects', html)
+            self.assertIn('Join a Project', html)
+            self.assertIn('Donate Now', html)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,45 @@
             <p>Participate in neighborhood initiatives through volunteering, skilled support, or project fundraising. These community-led gigs bring people together to create tangible local impact.</p>
           </section>
 
+          <div class="co-op-actions" style="margin-top: 0; margin-bottom: 20px;">
+            <button class="btn btn-primary" id="joinProjectBtn">Join a Project</button>
+            <button class="btn btn-secondary" id="donateNowBtn">Donate Now</button>
+          </div>
+
+          <section class="co-op-participation">
+            <div class="co-op-participation-card">
+              <h3>Participate in a community initiative</h3>
+              <p>Choose how you want to contribute and get matched with the right local opportunity.</p>
+              <form id="cooperativeForm">
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label for="projectType">I want to</label>
+                    <select id="projectType">
+                      <option value="volunteer">Volunteer</option>
+                      <option value="skills">Offer skills</option>
+                      <option value="fundraise">Donate / fundraise</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="projectName">Project</label>
+                    <select id="projectName">
+                      <option>Community Clean-Up Drive</option>
+                      <option>School Repair & Learning Support</option>
+                      <option>Neighborhood Garden Project</option>
+                      <option>Health Camp & Relief Support</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="contributionAmount">Contribution</label>
+                  <input id="contributionAmount" type="number" min="100" step="100" placeholder="Enter amount in ₹" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Submit Interest</button>
+                <p id="co-op-form-status" class="text-sm text-muted mt-8" style="margin-bottom:0; min-height: 20px;"></p>
+              </form>
+            </div>
+          </section>
+
           <div class="co-op-tabs">
             <button class="co-op-tab active" data-tab="volunteer">Volunteer</button>
             <button class="co-op-tab" data-tab="skills">Skills</button>
@@ -150,11 +189,41 @@
           </section>
 
           <div class="co-op-actions">
-            <button class="btn btn-primary" onclick="window.location.href='/jobs.html'">Join a Gig</button>
-            <button class="btn btn-secondary" onclick="window.location.href='/marketplace.html'">View Campaigns</button>
+            <button class="btn btn-primary" id="finalJoinBtn">Join a Project</button>
+            <button class="btn btn-secondary" id="finalDonateBtn">Donate Now</button>
           </div>
         </main>
       `;
+
+      document.getElementById('joinProjectBtn').addEventListener('click', () => {
+        document.getElementById('panel-volunteer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelector('[data-tab="volunteer"]').click();
+        toast('Volunteer and skills opportunities are ready to join.', 'success');
+      });
+
+      document.getElementById('donateNowBtn').addEventListener('click', () => {
+        document.getElementById('panel-fundraising').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelector('[data-tab="fundraising"]').click();
+        toast('Fundraising campaigns are now visible.', 'success');
+      });
+
+      document.getElementById('finalJoinBtn').addEventListener('click', () => {
+        document.getElementById('joinProjectBtn').click();
+      });
+
+      document.getElementById('finalDonateBtn').addEventListener('click', () => {
+        document.getElementById('donateNowBtn').click();
+      });
+
+      document.getElementById('cooperativeForm').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const type = document.getElementById('projectType').value;
+        const project = document.getElementById('projectName').value;
+        const amount = document.getElementById('contributionAmount').value || '0';
+        const status = document.getElementById('co-op-form-status');
+        status.textContent = `Thanks! Your ${type === 'fundraise' ? 'donation' : 'interest'} for ${project} has been recorded. ${type === 'fundraise' ? 'Donor contribution: ₹' + amount : 'We will contact you with the next steps.'}`;
+        toast('Your community interest has been recorded.', 'success');
+      });
 
       document.querySelectorAll('.co-op-tab').forEach(button => {
         button.addEventListener('click', () => {
