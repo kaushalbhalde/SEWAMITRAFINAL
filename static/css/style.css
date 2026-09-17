@@ -912,6 +912,7 @@ body.dark-theme .impact-card {
 .landing-page {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   isolation: isolate;
   background: #102a43;
@@ -938,9 +939,11 @@ body.dark-theme .impact-card {
 .landing-page .landing-slide {
   background-position: center;
   background-size: cover;
+  background-repeat: no-repeat;
   opacity: 0;
-  transform: scale(1.04);
-  transition: opacity 1.2s ease, transform 7s ease;
+  transform: scale(1.03);
+  will-change: opacity, transform;
+  transition: opacity 1.35s ease-in-out, transform 7s ease-out;
 }
 
 .landing-page .landing-slide.is-active {
@@ -952,6 +955,11 @@ body.dark-theme .impact-card {
   position: relative;
   z-index: 2;
   min-height: calc(100vh - 100px);
+  min-height: calc(100dvh - 100px);
+  background: transparent;
+}
+
+body.dark-theme .landing-page .auth-wrap {
   background: transparent;
 }
 

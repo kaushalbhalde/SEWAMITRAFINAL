@@ -20,9 +20,10 @@
       document.getElementById('landing').innerHTML = `
         <div class="landing-page">
           <div class="landing-slideshow" aria-hidden="true">
-            <div class="landing-slide is-active" style="background-image:url('/static/uploads/previous-work/4843692fdb0f1d66_ChatGPT%20Image%20Sep%2011,%202026,%2002_31_24%20AM.png');"></div>
-            <div class="landing-slide" style="background-image:url('/static/uploads/previous-work/83abb1afc6c28573_ChatGPT%20Image%20Sep%2011,%202026,%2002_39_09%20AM.png');"></div>
-            <div class="landing-slide" style="background-image:url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg');"></div>
+            <div class="landing-slide is-active" data-image="https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=2400&q=90" data-profession="Carpenter"></div>
+            <div class="landing-slide" data-image="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=2400&q=90" data-profession="Painter"></div>
+            <div class="landing-slide" data-image="https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=2400&q=90" data-profession="Plumber"></div>
+            <div class="landing-slide" data-image="https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=2400&q=90" data-profession="Cook"></div>
           </div>
           ${renderNavbar()}
           ${renderLangBar()}
@@ -60,15 +61,42 @@
         </div>
       `;
 
-      const slides = document.querySelectorAll('.landing-slide');
+      const slides = [...document.querySelectorAll('.landing-slide')];
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let currentSlide = 0;
-      if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        window.setInterval(() => {
-          slides[currentSlide].classList.remove('is-active');
-          currentSlide = (currentSlide + 1) % slides.length;
-          slides[currentSlide].classList.add('is-active');
-        }, 5000);
-      }
+      let slideshowTimer;
+
+      const preloadSlide = slide => new Promise(resolve => {
+        const image = new Image();
+        image.onload = () => {
+          slide.style.backgroundImage = `url("${slide.dataset.image}")`;
+          resolve();
+        };
+        image.onerror = resolve;
+        image.src = slide.dataset.image;
+      });
+
+      const showNextSlide = () => {
+        slides[currentSlide].classList.remove('is-active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('is-active');
+      };
+
+      const startSlideshow = () => {
+        if (reducedMotion || slideshowTimer || slides.length < 2) return;
+        slideshowTimer = window.setInterval(showNextSlide, 5500);
+      };
+
+      const stopSlideshow = () => {
+        window.clearInterval(slideshowTimer);
+        slideshowTimer = undefined;
+      };
+
+      Promise.all(slides.map(preloadSlide)).then(startSlideshow);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopSlideshow();
+        else startSlideshow();
+      });
     })();
   </script>
 </body>
