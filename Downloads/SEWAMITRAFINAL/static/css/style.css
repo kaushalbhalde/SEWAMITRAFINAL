@@ -473,6 +473,137 @@ body.dark-theme tr:hover { background: rgba(148, 163, 184, 0.08); }
   margin-bottom: 8px;
 }
 
+.cooperative-section {
+  width: min(100%, 1100px);
+  margin: 56px auto 0;
+  padding: 28px 24px 18px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.85), rgba(240, 249, 255, 0.9));
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  box-shadow: var(--shadow-md);
+}
+
+.cooperative-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 24px;
+}
+
+.section-kicker {
+  display: inline-block;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary-dark);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.cooperative-header h2 {
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  margin-bottom: 10px;
+  color: var(--neutral-900);
+}
+
+.cooperative-header p {
+  color: var(--neutral-600);
+  font-size: 1rem;
+}
+
+.cooperative-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.co-op-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 20px 18px;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+}
+
+.co-op-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary-light), rgba(245, 158, 11, 0.16));
+  border-radius: 14px;
+  font-size: 1.6rem;
+  margin-bottom: 14px;
+}
+
+.co-op-tag {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.co-op-tag.volunteer { background: rgba(22, 163, 74, 0.12); color: var(--success); }
+.co-op-tag.skills { background: rgba(37, 99, 235, 0.12); color: var(--primary); }
+.co-op-tag.fund { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+.co-op-tag.support { background: rgba(14, 116, 144, 0.12); color: var(--secondary); }
+
+.co-op-card h3 {
+  font-size: 1.08rem;
+  margin-bottom: 8px;
+  color: var(--neutral-900);
+}
+
+.co-op-card p {
+  font-size: 0.88rem;
+  color: var(--neutral-600);
+  margin-bottom: 14px;
+}
+
+.co-op-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--neutral-200);
+  font-size: 0.76rem;
+  color: var(--neutral-500);
+}
+
+.cooperative-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+body.dark-theme .cooperative-section {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.96));
+  border-color: rgba(96, 165, 250, 0.2);
+}
+
+body.dark-theme .co-op-card {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+body.dark-theme .co-op-card p,
+body.dark-theme .cooperative-header p,
+body.dark-theme .co-op-meta {
+  color: var(--neutral-500);
+}
+
+body.dark-theme .section-kicker {
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+}
+
 @media (max-width: 860px) {
   .profile-content-grid {
     grid-template-columns: 1fr;
