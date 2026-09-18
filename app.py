@@ -312,12 +312,20 @@ def init_db():
         customer_id INTEGER NOT NULL,
         quantity INTEGER DEFAULT 1,
         total_price REAL,
+        payment_method TEXT DEFAULT 'wallet',
+        payment_status TEXT DEFAULT 'pending',
         status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (product_id) REFERENCES products(id),
         FOREIGN KEY (customer_id) REFERENCES users(id)
     );
     ''')
+
+    order_columns = [col[1] for col in conn.execute('PRAGMA table_info(orders)').fetchall()]
+    if 'payment_method' not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT 'wallet'")
+    if 'payment_status' not in order_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'pending'")
 
     # Seed job categories
     categories = [
@@ -2137,6 +2145,78 @@ def place_order(pid):
     conn.commit()
     conn.close()
     return jsonify({'message': 'Order placed', 'order_id': oid, 'total': total}), 201
+
+
+@app.route('/api/orders/checkout', methods=['POST'])
+@login_required
+def checkout_orders():
+    user = current_user()
+    if user['role'] not in ('customer', 'worker', 'service-team'):
+        return jsonify({'error': 'Only customers and workers can place marketplace orders'}), 403
+
+    data = request.json or {}
+    items = data.get('items') or []
+    payment_method = data.get('payment_method', 'wallet')
+    allowed_methods = ('wallet', 'upi', 'card')
+    if payment_method not in allowed_methods:
+        return jsonify({'error': 'Choose a valid payment method'}), 400
+    if not items:
+        return jsonify({'error': 'Your cart is empty'}), 400
+
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        order_items = []
+        grand_total = 0
+        for item in items:
+            product_id = int(item.get('product_id'))
+            quantity = int(item.get('quantity', 1))
+            if quantity < 1 or quantity > 99:
+                raise ValueError('Quantity must be between 1 and 99')
+            product = c.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
+            if not product:
+                raise ValueError('A product in your cart is no longer available')
+            if product['stock'] < quantity:
+                raise ValueError(f"Only {product['stock']} units of {product['name']} are available")
+            total = product['price'] * quantity
+            order_items.append((product, quantity, total))
+            grand_total += total
+
+        payment_status = 'paid'
+        if payment_method == 'wallet':
+            wallet = c.execute('SELECT balance FROM wallets WHERE user_id = ?', (user['id'],)).fetchone()
+            if not wallet or wallet['balance'] < grand_total:
+                raise ValueError('Insufficient wallet balance. Add funds before checkout.')
+            c.execute('UPDATE wallets SET balance = balance - ? WHERE user_id = ?', (grand_total, user['id']))
+
+        order_ids = []
+        for product, quantity, total in order_items:
+            c.execute(
+                '''INSERT INTO orders
+                   (product_id, customer_id, quantity, total_price, payment_method, payment_status, status)
+                   VALUES (?,?,?,?,?,?,?)''',
+                (product['id'], user['id'], quantity, total, payment_method, payment_status, 'pending')
+            )
+            order_ids.append(c.lastrowid)
+            c.execute('UPDATE products SET stock = stock - ? WHERE id = ?', (quantity, product['id']))
+
+        c.execute(
+            '''INSERT INTO transactions (user_id, amount, type, description, status)
+               VALUES (?,?,?,?,?)''',
+            (user['id'], -grand_total, 'purchase', f'Marketplace checkout via {payment_method}', 'completed')
+        )
+        conn.commit()
+    except (ValueError, TypeError, sqlite3.IntegrityError) as exc:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(exc) or 'Checkout could not be completed'}), 400
+    conn.close()
+    return jsonify({
+        'message': 'Payment successful and order placed',
+        'order_ids': order_ids,
+        'total': grand_total,
+        'payment_method': payment_method
+    }), 201
 
 
 @app.route('/api/orders', methods=['GET'])

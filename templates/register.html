@@ -26,7 +26,7 @@
         <div class="auth-wrap" style="align-items:flex-start;padding-top:40px;">
           <div class="auth-card" style="max-width:560px;">
             <h1>Create Account</h1>
-            <p class="subtitle">Join SEWAMITRA as a Customer, Worker, or service-team</p>
+            <p class="subtitle">Join SEWAMITRA as a customer, worker, business, or service team</p>
 
             <label style="font-size:0.875rem;font-weight:600;margin-bottom:6px;display:block;">I am a...</label>
             <div class="role-selector">
@@ -35,6 +35,9 @@
               </div>
               <div class="role-option" onclick="selectRole('worker')" id="role-worker">
                 <span class="role-icon">🔧</span> Worker
+              </div>
+              <div class="role-option" onclick="selectRole('business')" id="role-business">
+                <span class="role-icon">🏪</span> Small Business
               </div>
               <div class="role-option" onclick="selectRole('service-team')" id="role-service-team">
                 <span class="role-icon">👥</span> Service Team
@@ -131,7 +134,7 @@
               <div id="businessFields" class="hidden">
                 <div class="form-group">
                   <label>Business Description</label>
-                  <textarea id="bio" placeholder="What does your business offer?"></textarea>
+                  <textarea id="businessBio" placeholder="What does your business offer?"></textarea>
                 </div>
               </div>
 
@@ -267,7 +270,7 @@
         }));
       }
       if (selectedRole === 'business') {
-        data.bio = document.getElementById('bio').value;
+        data.bio = document.getElementById('businessBio').value;
       }
       try {
         await API('auth/register', { method: 'POST', body: JSON.stringify(data) });

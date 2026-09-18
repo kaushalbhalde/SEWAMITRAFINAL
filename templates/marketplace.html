@@ -16,6 +16,7 @@
       if (!ok) return;
       const products = await API('products');
       const nearbyProducts = [...new Map(products.map(product => [product.name.trim().toLowerCase(), product])).values()].slice(0, 10);
+      window.marketplaceProducts = nearbyProducts;
       const demoShops = [
         { name: 'Bhopal Carpentry Tools', category: 'Carpentry tools', icon: '🪚', distance: '1.2 km away', position: '28% 35%' },
         { name: 'Narmada Plumbing Mart', category: 'Plumbing tools', icon: '🔧', distance: '2.4 km away', position: '67% 31%' },
@@ -25,8 +26,13 @@
 
       document.getElementById('page').innerHTML = `
         <div class="container">
-          <div class="page-title">Marketplace</div>
-          <p class="text-muted mb-16">Products and services from local businesses in Bhopal, India</p>
+          <div class="flex-between marketplace-heading">
+            <div>
+              <div class="page-title">Marketplace</div>
+              <p class="text-muted">Products and services from local businesses in Bhopal, India</p>
+            </div>
+            <button class="btn btn-primary cart-trigger" type="button" onclick="openCart()">🛒 Cart <span id="cartCount" class="cart-count">0</span></button>
+          </div>
 
           <div class="marketplace-layout">
             <div class="card market-map-panel">
@@ -70,6 +76,36 @@
 
           <div id="productsGrid" class="mt-16"></div>
         </div>
+
+        <div class="modal-overlay" id="cartModal">
+          <div class="modal cart-modal">
+            <button class="modal-close" type="button" onclick="closeCart()">&times;</button>
+            <h2>Your Cart</h2>
+            <div id="cartItems"></div>
+            <div class="cart-total-row"><span>Total</span><strong id="cartTotal">₹0</strong></div>
+            <button class="btn btn-primary btn-block" type="button" onclick="openCheckout()">Continue to payment</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="checkoutModal">
+          <div class="modal cart-modal">
+            <button class="modal-close" type="button" onclick="closeCheckout()">&times;</button>
+            <h2>Secure checkout</h2>
+            <p class="text-muted mb-16">Choose how you want to pay. Card and UPI are demo payment options.</p>
+            <form id="checkoutForm">
+              <div class="payment-options">
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="wallet" checked> <span>💳 Wallet</span><small>Use your SEWAMITRA balance</small></label>
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="upi"> <span>📱 UPI</span><small>Demo instant payment</small></label>
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="card"> <span>💠 Card</span><small>Demo card payment</small></label>
+              </div>
+              <div id="paymentReference" class="form-group hidden">
+                <label id="paymentReferenceLabel">Payment reference</label>
+                <input id="paymentReferenceInput" type="text" placeholder="Enter demo payment reference">
+              </div>
+              <button class="btn btn-primary btn-block" type="submit">Pay and place order</button>
+            </form>
+          </div>
+        </div>
       `;
 
       const el = document.getElementById('productsGrid');
@@ -88,26 +124,99 @@
             <div class="text-sm text-muted">by ${p.business_name}</div>
             ${currentUser && currentUser.role !== 'business' ? `
               <div class="flex-row gap-8 mt-8">
-                <button class="btn btn-sm btn-primary" onclick="orderProduct(${p.id}, '${p.name.replace(/'/g, '')}')">Order</button>
+                <button class="btn btn-sm btn-primary" onclick="addToCart(${p.id})">Add to cart</button>
                 <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>
               </div>
             ` : ''}
           </div>
         </div>
       `).join('') + `</div>`;
+      updateCartCount();
+      document.querySelectorAll('input[name="paymentMethod"]').forEach(input => input.addEventListener('change', updatePaymentField));
     })();
 
-    async function orderProduct(pid, name) {
-      const qty = prompt('How many ' + name + '?', '1');
-      if (!qty) return;
-      try {
-        const res = await API('products/' + pid + '/order', {
-          method: 'POST',
-          body: JSON.stringify({ quantity: parseInt(qty) })
-        });
-        toast('Order placed! Total: ' + fmtMoney(res.total), 'success');
-      } catch (e) { toast(e.message, 'error'); }
+    let cart = JSON.parse(localStorage.getItem('sewamitra-cart') || '[]');
+
+    function saveCart() {
+      localStorage.setItem('sewamitra-cart', JSON.stringify(cart));
+      updateCartCount();
     }
+
+    function updateCartCount() {
+      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+      const badge = document.getElementById('cartCount');
+      if (badge) badge.textContent = count;
+    }
+
+    function addToCart(productId) {
+      const product = window.marketplaceProducts.find(item => item.id === productId);
+      if (!product) return;
+      const existing = cart.find(item => item.product_id === productId);
+      if (existing) existing.quantity = Math.min(existing.quantity + 1, product.stock);
+      else cart.push({ product_id: product.id, name: product.name, price: product.price, image_url: product.image_url, quantity: 1, stock: product.stock });
+      saveCart();
+      toast(product.name + ' added to cart', 'success');
+    }
+
+    function changeCartQuantity(productId, delta) {
+      const item = cart.find(entry => entry.product_id === productId);
+      if (!item) return;
+      item.quantity += delta;
+      if (item.quantity < 1) cart = cart.filter(entry => entry.product_id !== productId);
+      if (item.quantity > item.stock) item.quantity = item.stock;
+      saveCart();
+      renderCart();
+    }
+
+    function getCartTotal() { return cart.reduce((sum, item) => sum + item.price * item.quantity, 0); }
+
+    function renderCart() {
+      const items = document.getElementById('cartItems');
+      const total = document.getElementById('cartTotal');
+      if (!items || !total) return;
+      if (!cart.length) items.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>Your cart is empty.</p></div>';
+      else items.innerHTML = cart.map(item => `
+        <div class="cart-item">
+          <div class="market-mini-badge online">${item.image_url || '📦'}</div>
+          <div class="cart-item-info"><strong>${item.name}</strong><span>${fmtMoney(item.price)} each</span></div>
+          <div class="cart-quantity"><button type="button" onclick="changeCartQuantity(${item.product_id}, -1)">−</button><span>${item.quantity}</span><button type="button" onclick="changeCartQuantity(${item.product_id}, 1)">+</button></div>
+        </div>
+      `).join('');
+      total.textContent = fmtMoney(getCartTotal());
+    }
+
+    function openCart() { renderCart(); document.getElementById('cartModal').classList.add('active'); }
+    function closeCart() { document.getElementById('cartModal').classList.remove('active'); }
+    function openCheckout() {
+      if (!cart.length) { toast('Add a product before checkout', 'error'); return; }
+      closeCart();
+      document.getElementById('checkoutModal').classList.add('active');
+    }
+    function closeCheckout() { document.getElementById('checkoutModal').classList.remove('active'); }
+    function updatePaymentField() {
+      const method = document.querySelector('input[name="paymentMethod"]:checked')?.value;
+      const field = document.getElementById('paymentReference');
+      if (!field) return;
+      field.classList.toggle('hidden', method === 'wallet');
+      document.getElementById('paymentReferenceLabel').textContent = method === 'upi' ? 'UPI ID' : 'Cardholder name';
+      document.getElementById('paymentReferenceInput').placeholder = method === 'upi' ? 'example@upi' : 'Demo cardholder name';
+    }
+
+    document.addEventListener('submit', async event => {
+      if (event.target.id !== 'checkoutForm') return;
+      event.preventDefault();
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+      try {
+        const res = await API('orders/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ items: cart.map(item => ({ product_id: item.product_id, quantity: item.quantity })), payment_method: paymentMethod })
+        });
+        cart = [];
+        saveCart();
+        closeCheckout();
+        toast('Payment successful! Order total: ' + fmtMoney(res.total), 'success');
+      } catch (error) { toast(error.message, 'error'); }
+    });
   </script>
 </body>
 </html>
