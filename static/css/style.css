@@ -190,7 +190,6 @@ body.dark-theme .chatbot-messages { background: #0b1220; }
 body.dark-theme .chatbot-bubble.bot { color: var(--neutral-800); }
 body.dark-theme .chatbot-bubble.user { color: white; }
 body.dark-theme tr:hover { background: rgba(148, 163, 184, 0.08); }
-body.dark-theme .cooperative-hero,
 body.dark-theme .co-op-card,
 body.dark-theme .co-op-stat,
 body.dark-theme .co-op-tab-panel,
@@ -199,6 +198,10 @@ body.dark-theme .co-op-side-card,
 body.dark-theme .impact-card {
   background: var(--neutral-50);
   border-color: var(--neutral-200);
+}
+
+body.dark-theme .cooperative-hero {
+  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg') center / cover;
 }
 
 /* ---------- Cooperative Gigs ---------- */
@@ -213,7 +216,8 @@ body.dark-theme .impact-card {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(20,184,166,0.12), rgba(251,191,36,0.12));
+  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg') center / cover;
+  color: white;
   border: 1px solid rgba(148,163,184,0.25);
   border-radius: 24px;
   padding: 28px;
@@ -228,13 +232,17 @@ body.dark-theme .impact-card {
 .cooperative-hero h1 {
   font-size: clamp(2.1rem, 4vw, 3.1rem);
   margin: 10px 0 12px;
-  color: var(--neutral-900);
+  color: white;
 }
 
 .cooperative-hero p {
-  color: var(--neutral-600);
+  color: rgba(255,255,255,0.86);
   font-size: 1.02rem;
   max-width: 620px;
+}
+
+.cooperative-hero .section-kicker {
+  color: #b9f5c9;
 }
 
 .cooperative-hero-actions {

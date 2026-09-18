@@ -436,7 +436,9 @@ def init_db():
         ('Portable Drill Set', 'Cordless drill with bits for fast home fixes.', 1899, 'Tools', '🔧', 16),
         ('Safety Helmet Kit', 'Protective headgear and gloves for renovation work.', 999, 'Safety', '🦺', 20),
         ('Kitchen Cleaning Bundle', 'Deep-clean essentials for counters, sinks and tiles.', 699, 'Cleaning', '🫧', 25),
-        ('Garden Starter Pack', 'Seed mix, gloves and basic outdoor maintenance tools.', 1299, 'Gardening', '🌿', 14)
+        ('Garden Starter Pack', 'Seed mix, gloves and basic outdoor maintenance tools.', 1299, 'Gardening', '🌿', 14),
+        ('Carpenter Hand Tool Set', 'Chisels, measuring tape and a claw hammer for woodworking.', 1799, 'Carpentry', '🪚', 10),
+        ('Plumbing Repair Essentials', 'Pipe wrench, seal tape and fittings for common repairs.', 899, 'Plumbing', '🔧', 15)
     ]
     for name, description, price, category, image_url, stock in demo_products:
         c.execute(
@@ -2086,8 +2088,20 @@ def create_product():
 def list_products():
     conn = get_db()
     rows = conn.execute(
-        '''SELECT p.*, u.name as business_name FROM products p
-           JOIN users u ON p.business_id = u.id ORDER BY RANDOM()'''
+                '''SELECT p.*, u.name as business_name FROM products p
+                     JOIN users u ON p.business_id = u.id
+                     WHERE p.id IN (
+                         SELECT MIN(p2.id) FROM products p2 GROUP BY lower(trim(p2.name))
+                     )
+                     ORDER BY CASE lower(p.category)
+                         WHEN 'carpentry' THEN 1
+                         WHEN 'plumbing' THEN 2
+                         WHEN 'electrical' THEN 3
+                         WHEN 'cleaning' THEN 4
+                         WHEN 'gardening' THEN 5
+                         ELSE 6
+                     END, p.id DESC
+                     LIMIT 10'''
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
