@@ -77,6 +77,40 @@ class WorkerProfilePhotoTests(unittest.TestCase):
         self.assertIn('/static/uploads/previous-work/kaushal-cooking-sample.svg', profile['previous_work_photos'])
         conn.close()
 
+    def test_customer_can_send_price_offer_to_available_worker(self):
+        conn = app_module.get_db()
+        customer = conn.execute("SELECT id FROM users WHERE email = 'customer@bridge.local'").fetchone()
+        worker = conn.execute("SELECT id FROM users WHERE email = 'worker2@bridge.local'").fetchone()
+        job = conn.execute(
+            "SELECT id FROM jobs WHERE customer_id = ? AND status = 'open' LIMIT 1",
+            (customer['id'],)
+        ).fetchone()
+        conn.close()
+
+        with app_module.app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess['user_id'] = customer['id']
+            response = client.post(f"/api/jobs/{job['id']}/invite-worker", json={
+                'worker_id': worker['id'],
+                'proposed_price': 1800,
+                'price_type': 'total',
+                'message': 'Can you take this job for this amount?'
+            })
+            self.assertEqual(response.status_code, 201)
+
+        conn = app_module.get_db()
+        application = conn.execute(
+            'SELECT * FROM job_applications WHERE job_id = ? AND worker_id = ?',
+            (job['id'], worker['id'])
+        ).fetchone()
+        negotiation = conn.execute(
+            'SELECT * FROM negotiations WHERE application_id = ?',
+            (application['id'],)
+        ).fetchone()
+        self.assertEqual(application['proposed_price'], 1800)
+        self.assertEqual(negotiation['proposed_by'], 'customer')
+        conn.close()
+
     def test_customer_profile_template_hides_quick_details(self):
         template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'profile.html')
         with open(template_path, 'r', encoding='utf-8') as f:

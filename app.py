@@ -1038,6 +1038,62 @@ def apply_job(job_id):
     return jsonify({'message': 'Applied successfully', 'application_id': app_id}), 201
 
 
+@app.route('/api/jobs/<int:job_id>/invite-worker', methods=['POST'])
+@login_required
+@role_required('customer')
+def invite_worker_to_job(job_id):
+    data = request.json or {}
+    worker_id = data.get('worker_id')
+    try:
+        proposed_price = float(data.get('proposed_price'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Enter a valid offer amount'}), 400
+    if proposed_price <= 0:
+        return jsonify({'error': 'The offer amount must be greater than zero'}), 400
+
+    conn = get_db()
+    job = conn.execute('SELECT * FROM jobs WHERE id = ? AND customer_id = ?', (job_id, session['user_id'])).fetchone()
+    worker = conn.execute(
+        '''SELECT u.id FROM users u JOIN worker_profiles wp ON wp.user_id = u.id
+           WHERE u.id = ? AND u.role = 'worker' AND wp.availability = 1''',
+        (worker_id,)
+    ).fetchone()
+    if not job:
+        conn.close()
+        return jsonify({'error': 'Open job not found'}), 404
+    if job['status'] != 'open':
+        conn.close()
+        return jsonify({'error': 'Only open jobs can receive worker offers'}), 400
+    if not worker:
+        conn.close()
+        return jsonify({'error': 'Worker is not available'}), 404
+    existing = conn.execute(
+        'SELECT id FROM job_applications WHERE job_id = ? AND worker_id = ?',
+        (job_id, worker_id)
+    ).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'error': 'You have already contacted this worker for the selected job'}), 409
+
+    price_type = data.get('price_type', 'total')
+    message = data.get('message', '')
+    c = conn.cursor()
+    c.execute(
+        '''INSERT INTO job_applications (job_id, worker_id, proposed_price, price_type, message)
+           VALUES (?,?,?,?,?)''',
+        (job_id, worker_id, proposed_price, price_type, message)
+    )
+    app_id = c.lastrowid
+    c.execute(
+        '''INSERT INTO negotiations (application_id, price, price_type, proposed_by, message, status)
+           VALUES (?,?,?,?,?, 'pending')''',
+        (app_id, proposed_price, price_type, 'customer', message)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Price offer sent to worker', 'application_id': app_id}), 201
+
+
 @app.route('/api/jobs/<int:job_id>/apply-group', methods=['POST'])
 @login_required
 @role_required('worker')

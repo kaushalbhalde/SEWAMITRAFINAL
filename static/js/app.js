@@ -233,7 +233,7 @@ function renderNavbar(active) {
     }
     links.push(`
       <button id="notificationButton" class="notification-bell" aria-label="Notifications" onclick="toggleNotificationsPanel()">
-        �
+        &#128276;
         <span id="notificationBadge" class="notification-badge hidden">0</span>
       </button>
     `);
