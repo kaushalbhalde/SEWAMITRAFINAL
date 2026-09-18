@@ -519,6 +519,27 @@ body.dark-theme .impact-card {
   .marketplace-layout { grid-template-columns: 1fr; }
   .profile-content-grid { grid-template-columns: 1fr; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .tabs {
+    width: min(220px, 100%);
+    flex-direction: column;
+    align-items: stretch;
+    border-right: 2px solid var(--neutral-200);
+    border-bottom: 0;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+
+  .tab {
+    width: 100%;
+    margin-bottom: 0;
+    border-bottom: 0;
+    border-right: 3px solid transparent;
+    padding: 11px 14px;
+    text-align: left;
+  }
+
+  .tab.active { border-right-color: var(--primary); }
 }
 
 /* ---------- Layout ---------- */
