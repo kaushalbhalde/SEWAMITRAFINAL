@@ -281,6 +281,18 @@ def init_db():
         FOREIGN KEY (receiver_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        type TEXT DEFAULT 'info',
+        link TEXT,
+        read_flag INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         business_id INTEGER NOT NULL,
@@ -472,6 +484,19 @@ def init_db():
             'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?,?,?)',
             (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'], 'Hi Arjun, are you available for the kitchen rewiring job?')
         )
+    for user_email, title, message, ntype in [
+        ('customer@bridge.local', 'Job update', 'Your kitchen rewiring request is now assigned to a verified worker.', 'info'),
+        ('kaushal@bridge.local', 'New lead', 'A customer has shown interest in your catering profile.', 'success'),
+        ('worker1@bridge.local', 'Safety reminder', 'Please confirm the on-site safety checklist before starting the job.', 'warning'),
+        ('business', 'Marketplace update', 'Your product catalog has new buyer interest this week.', 'info')
+    ]:
+        user_id = demo_ids.get(user_email)
+        if user_id is None:
+            continue
+        c.execute(
+            'INSERT OR IGNORE INTO notifications (user_id, title, message, type, read_flag) VALUES (?,?,?,?,0)',
+            (user_id, title, message, ntype)
+        )
     if c.execute('SELECT COUNT(*) FROM ratings WHERE rater_id = ? AND ratee_id = ?', (demo_ids['customer@bridge.local'], demo_ids['worker2@bridge.local'])).fetchone()[0] == 0:
         c.execute(
             'INSERT INTO ratings (job_id, rater_id, ratee_id, score, review) VALUES (?,?,?,?,?)',
@@ -555,6 +580,21 @@ def current_user():
     user = conn.execute('SELECT * FROM users WHERE id = ?', (uid,)).fetchone()
     conn.close()
     return user
+
+
+def create_notification(user_id, title, message, notification_type='info', link=None):
+    if not user_id:
+        return None
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        'INSERT INTO notifications (user_id, title, message, type, link, read_flag) VALUES (?,?,?,?,?,0)',
+        (user_id, title, message, notification_type, link)
+    )
+    notification_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return notification_id
 
 
 # ---------------------------------------------------------------------------
@@ -1818,6 +1858,65 @@ def get_contacts():
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+# ---------------------------------------------------------------------------
+# NOTIFICATIONS API
+# ---------------------------------------------------------------------------
+
+@app.route('/api/notifications', methods=['GET'])
+@login_required
+def get_notifications():
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 25',
+        (session['user_id'],)
+    ).fetchall()
+    unread_count = conn.execute(
+        'SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND read_flag = 0',
+        (session['user_id'],)
+    ).fetchone()['count']
+    conn.close()
+    return jsonify({'items': [dict(r) for r in rows], 'unread_count': unread_count})
+
+
+@app.route('/api/notifications', methods=['POST'])
+@login_required
+def create_notification_api():
+    data = request.json or {}
+    user_id = data.get('user_id') or session['user_id']
+    title = (data.get('title') or '').strip()
+    message = (data.get('message') or '').strip()
+    if not title:
+        return jsonify({'error': 'Notification title is required'}), 400
+    notification_id = create_notification(user_id, title, message, data.get('type', 'info'), data.get('link'))
+    return jsonify({'message': 'Notification created', 'notification_id': notification_id}), 201
+
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    conn = get_db()
+    conn.execute(
+        'UPDATE notifications SET read_flag = 1 WHERE id = ? AND user_id = ?',
+        (notification_id, session['user_id'])
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Notification marked as read'})
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    conn = get_db()
+    conn.execute(
+        'UPDATE notifications SET read_flag = 1 WHERE user_id = ?',
+        (session['user_id'],)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'All notifications marked as read'})
 
 
 # ---------------------------------------------------------------------------

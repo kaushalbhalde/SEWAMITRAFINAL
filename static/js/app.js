@@ -101,14 +101,17 @@ const API = (path, opts = {}) => {
 };
 
 let currentUser = null;
+let notificationState = { items: [], unread_count: 0 };
 
 async function checkAuth() {
   try {
     const res = await API('auth/me');
     currentUser = res.user;
+    document.dispatchEvent(new CustomEvent('authchange', { detail: currentUser }));
     return res;
   } catch {
     currentUser = null;
+    document.dispatchEvent(new CustomEvent('authchange', { detail: null }));
     return { user: null };
   }
 }
@@ -228,6 +231,12 @@ function renderNavbar(active) {
     if (currentUser.role === 'admin') {
       links.push(`<a href="/admin.html" class="${active === 'admin' ? 'active' : ''}">Admin Panel</a>`);
     }
+    links.push(`
+      <button id="notificationButton" class="notification-bell" aria-label="Notifications" onclick="toggleNotificationsPanel()">
+        🔔
+        <span id="notificationBadge" class="notification-badge hidden">0</span>
+      </button>
+    `);
     links.push(`<button onclick="doLogout()">Logout</button>`);
   } else {
     links.push(`<a href="/login.html">Login</a>`);
@@ -359,6 +368,112 @@ async function doLogout() {
   window.location.href = '/';
 }
 
+function updateNotificationBadge() {
+  const badge = document.getElementById('notificationBadge');
+  if (!badge) return;
+  const unread = Number(notificationState.unread_count || notificationState.unreadCount || 0);
+  badge.textContent = unread > 99 ? '99+' : String(unread);
+  badge.classList.toggle('hidden', unread <= 0);
+}
+
+function renderNotificationsPanel() {
+  const existing = document.getElementById('notificationsPanel');
+  if (existing) existing.remove();
+  if (!currentUser) return;
+
+  const items = (notificationState.items || []).map(item => `
+    <button class="notification-item ${item.read_flag ? 'read' : 'unread'}" data-id="${item.id}" onclick="event.stopPropagation(); openNotification(${item.id})">
+      <div class="notification-item-title">${item.title || 'Update'}</div>
+      <div class="notification-item-message">${item.message || ''}</div>
+      <div class="notification-item-meta">${item.type || 'info'}</div>
+    </button>
+  `).join('') || '<div class="notification-empty">No notifications yet.</div>';
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="notificationsPanel" class="notifications-panel hidden">
+      <div class="notifications-header">
+        <strong>Notifications</strong>
+        <button type="button" class="notifications-close" onclick="toggleNotificationsPanel()">×</button>
+      </div>
+      <div class="notifications-list">${items}</div>
+    </div>
+  `);
+}
+
+async function loadNotifications() {
+  if (!currentUser) {
+    notificationState = { items: [], unread_count: 0 };
+    updateNotificationBadge();
+    return [];
+  }
+  try {
+    const res = await API('notifications');
+    notificationState = res || { items: [], unread_count: 0 };
+    updateNotificationBadge();
+    renderNotificationsPanel();
+    return res.items || [];
+  } catch (err) {
+    console.warn('Unable to load notifications', err);
+    notificationState = { items: [], unread_count: 0 };
+    updateNotificationBadge();
+    return [];
+  }
+}
+
+async function openNotification(notificationId) {
+  const item = (notificationState.items || []).find(n => Number(n.id) === Number(notificationId));
+  if (item && !item.read_flag) {
+    try {
+      await API(`notifications/${notificationId}/read`, { method: 'POST' });
+      item.read_flag = 1;
+      notificationState.unread_count = Math.max(0, Number(notificationState.unread_count || 0) - 1);
+      updateNotificationBadge();
+      renderNotificationsPanel();
+    } catch (err) {
+      console.warn('Unable to mark notification read', err);
+    }
+  }
+  if (item?.link) {
+    window.location.href = item.link;
+  }
+}
+
+function toggleNotificationsPanel() {
+  const panel = document.getElementById('notificationsPanel');
+  if (!panel) {
+    renderNotificationsPanel();
+  }
+  const next = document.getElementById('notificationsPanel');
+  if (!next) return;
+  next.classList.toggle('hidden');
+  if (!next.classList.contains('hidden')) {
+    const unread = (notificationState.items || []).filter(item => !item.read_flag);
+    if (unread.length) {
+      unread.forEach(item => {
+        if (item && !item.read_flag) {
+          API(`notifications/${item.id}/read`, { method: 'POST' }).catch(() => {});
+          item.read_flag = 1;
+        }
+      });
+      notificationState.unread_count = 0;
+      updateNotificationBadge();
+      renderNotificationsPanel();
+    }
+  }
+}
+
+document.addEventListener('authchange', async (event) => {
+  currentUser = event.detail || null;
+  if (currentUser) {
+    await loadNotifications();
+  } else {
+    notificationState = { items: [], unread_count: 0 };
+    updateNotificationBadge();
+    const panel = document.getElementById('notificationsPanel');
+    if (panel) panel.remove();
+  }
+});
+
 function injectLayout(activePage) {
   document.body.insertAdjacentHTML('afterbegin', renderNavbar(activePage) + renderLangBar());
   document.body.insertAdjacentHTML('beforeend', renderChatFab());
@@ -368,6 +483,9 @@ async function initPage(activePage, requiredRoles) {
   await checkAuth();
   if (requiredRoles && !requireAuth(requiredRoles)) return false;
   injectLayout(activePage);
+  if (currentUser) {
+    await loadNotifications();
+  }
   initTheme();
   initLanguage();
   return true;

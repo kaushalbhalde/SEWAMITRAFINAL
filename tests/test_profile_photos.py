@@ -104,6 +104,36 @@ class WorkerProfilePhotoTests(unittest.TestCase):
             self.assertIn('Join a Project', html)
             self.assertIn('Donate Now', html)
 
+    def test_notifications_api_exposes_unread_count_and_mark_read(self):
+        with app_module.app.test_client() as client:
+            conn = app_module.get_db()
+            user = conn.execute("SELECT id FROM users WHERE email = 'customer@bridge.local'").fetchone()
+            conn.execute(
+                'INSERT INTO notifications (user_id, title, message, type, read_flag) VALUES (?,?,?,?,0)',
+                (user['id'], 'Test notification', 'Your job has been updated.', 'info')
+            )
+            conn.commit()
+            conn.close()
+
+            with client.session_transaction() as sess:
+                sess['user_id'] = user['id']
+
+            resp = client.get('/api/notifications')
+            self.assertEqual(resp.status_code, 200)
+            payload = resp.get_json()
+            self.assertIn('items', payload)
+            self.assertIn('unread_count', payload)
+            self.assertGreaterEqual(payload['unread_count'], 1)
+
+            notification_id = payload['items'][0]['id']
+            mark_resp = client.post(f'/api/notifications/{notification_id}/read')
+            self.assertEqual(mark_resp.status_code, 200)
+
+            updated = client.get('/api/notifications')
+            updated_payload = updated.get_json()
+            item = next(n for n in updated_payload['items'] if n['id'] == notification_id)
+            self.assertEqual(item['read_flag'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()
