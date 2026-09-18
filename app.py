@@ -2221,22 +2221,32 @@ def update_profile():
     )
     user = c.execute('SELECT role FROM users WHERE id = ?', (session['user_id'],)).fetchone()
     if user['role'] == 'worker':
+        availability = data.get('availability')
+        if availability is None:
+            existing_profile = c.execute(
+                'SELECT availability FROM worker_profiles WHERE user_id = ?',
+                (session['user_id'],)
+            ).fetchone()
+            availability = existing_profile['availability'] if existing_profile else 1
+        availability = 1 if str(availability).lower() in ('1', 'true', 'yes', 'on') else 0
         c.execute(
             '''INSERT INTO worker_profiles (user_id, skills, hourly_rate, daily_rate, portfolio, previous_work_photos, availability)
-               VALUES (?, ?, ?, ?, ?, ?, 1)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(user_id) DO UPDATE SET
                    skills = excluded.skills,
                    hourly_rate = excluded.hourly_rate,
                    daily_rate = excluded.daily_rate,
                    portfolio = excluded.portfolio,
-                   previous_work_photos = excluded.previous_work_photos''',
+                   previous_work_photos = excluded.previous_work_photos,
+                   availability = excluded.availability''',
             (
                 session['user_id'],
                 data.get('skills', ''),
                 data.get('hourly_rate'),
                 data.get('daily_rate'),
                 data.get('portfolio', ''),
-                json.dumps(final_photos)
+                json.dumps(final_photos),
+                availability
             )
         )
     conn.commit()

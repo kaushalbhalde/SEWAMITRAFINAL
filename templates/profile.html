@@ -172,6 +172,7 @@
                     <div class="form-group"><label>Hourly Rate (₹)</label><input type="number" id="editHourly" value="${wp.hourly_rate || ''}" step="any"></div>
                     <div class="form-group"><label>Daily Rate (₹)</label><input type="number" id="editDaily" value="${wp.daily_rate || ''}" step="any"></div>
                   </div>
+                  <div class="form-group"><label><input type="checkbox" id="editAvailability" ${wp.availability ? 'checked' : ''}> Available for work</label></div>
                   <div class="form-group"><label>Portfolio</label><textarea id="editPortfolio">${wp.portfolio || ''}</textarea></div>
                   <div class="form-group">
                     <label>Previous Work Photos</label>
@@ -234,6 +235,7 @@
           formData.append('skills', skillsEl.value);
           formData.append('hourly_rate', document.getElementById('editHourly').value || '');
           formData.append('daily_rate', document.getElementById('editDaily').value || '');
+          formData.append('availability', document.getElementById('editAvailability').checked ? '1' : '0');
           formData.append('portfolio', document.getElementById('editPortfolio').value || '');
           const existingPhotosInput = document.getElementById('existingPreviousWorkPhotos');
           if (existingPhotosInput) {

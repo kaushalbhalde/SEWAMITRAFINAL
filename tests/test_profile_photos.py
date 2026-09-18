@@ -55,6 +55,16 @@ class WorkerProfilePhotoTests(unittest.TestCase):
             payload = profile_resp.get_json()
             self.assertEqual(payload['worker_profile']['previous_work_photos'], ['/static/uploads/work/1.jpg', '/static/uploads/work/2.jpg'])
 
+            disable_resp = client.put('/api/profile', json={
+                'name': 'Arjun Electrician',
+                'skills': 'Electrical,Repair/Maintenance',
+                'availability': 0,
+                'previous_work_photos': []
+            })
+            self.assertEqual(disable_resp.status_code, 200)
+            disabled_profile = client.get(f"/api/profile/{user['id']}").get_json()
+            self.assertEqual(disabled_profile['worker_profile']['availability'], 0)
+
     def test_public_profile_view_does_not_require_login(self):
         with app_module.app.test_client() as client:
             user = client.application.config.get('TEST_USER_ID')
