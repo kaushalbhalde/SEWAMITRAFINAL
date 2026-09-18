@@ -352,12 +352,12 @@ def init_db():
     # Seed a small, repeatable demo dataset for local development.
     demo_hash = hashlib.sha256('demo123'.encode()).hexdigest()
     demo_users = [
-        ('Demo Customer', 'customer@bridge.local', 'customer', '9876500001', 12.9716, 77.5946, 'Indiranagar, Bengaluru', 'Looking for reliable local help.'),
-        ('Kaushal', 'kaushal@bridge.local', 'worker', '9876500002', 12.9728, 77.5985, 'Indiranagar, Bengaluru', 'Professional home chef and caterer offering tasty, hygienic meals and event cooking for families and small gatherings.'),
-        ('Arjun Electrician', 'worker1@bridge.local', 'worker', '9876500003', 12.9750, 77.6030, 'Ulsoor, Bengaluru', 'Certified electrician with 8 years of experience.'),
-        ('Meera Plumber', 'worker2@bridge.local', 'worker', '9876500004', 12.9650, 77.5900, 'Domlur, Bengaluru', 'Fast plumbing repairs and installations.'),
-        ('Ravi Home Care', 'worker3@bridge.local', 'worker', '9876500005', 12.9850, 77.5800, 'Malleshwaram, Bengaluru', 'Cleaning and home maintenance specialist.'),
-        ('CraftHub Supplies', 'business', 'business', '9876500006', 12.9680, 77.6050, 'Koramangala, Bengaluru', 'Tools and supplies for local professionals.')
+        ('Demo Customer', 'customer@bridge.local', 'customer', '9876500001', 23.2599, 77.4126, 'MP Nagar, Bhopal', 'Looking for reliable local help.'),
+        ('Kaushal', 'kaushal@bridge.local', 'worker', '9876500002', 23.2540, 77.4270, 'Arera Colony, Bhopal', 'Professional home chef and caterer offering tasty, hygienic meals and event cooking for families and small gatherings.'),
+        ('Arjun Electrician', 'worker1@bridge.local', 'worker', '9876500003', 23.2470, 77.4240, 'TT Nagar, Bhopal', 'Certified electrician with 8 years of experience.'),
+        ('Meera Plumber', 'worker2@bridge.local', 'worker', '9876500004', 23.2680, 77.4010, 'Shahpura, Bhopal', 'Fast plumbing repairs and installations.'),
+        ('Ravi Home Care', 'worker3@bridge.local', 'worker', '9876500005', 23.2730, 77.3980, 'Kolar Road, Bhopal', 'Cleaning and home maintenance specialist.'),
+        ('CraftHub Supplies', 'business', 'business', '9876500006', 23.2450, 77.4350, 'New Market, Bhopal', 'Tools and supplies for local professionals.')
     ]
     demo_ids = {}
     for name, email, role, phone, latitude, longitude, address, bio in demo_users:
@@ -372,7 +372,14 @@ def init_db():
                 '''UPDATE users
                          SET name = ?, phone = ?, latitude = ?, longitude = ?, address = ?, bio = ?
                    WHERE email = ?''',
-                     ('Kaushal', '9876500002', 12.9728, 77.5985, 'Indiranagar, Bengaluru', 'Professional home chef and caterer offering tasty, hygienic meals and event cooking for families and small gatherings.', email)
+                     ('Kaushal', '9876500002', 23.2540, 77.4270, 'Arera Colony, Bhopal', 'Professional home chef and caterer offering tasty, hygienic meals and event cooking for families and small gatherings.', email)
+            )
+        else:
+            c.execute(
+                '''UPDATE users
+                   SET name = ?, phone = ?, latitude = ?, longitude = ?, address = ?, bio = ?
+                   WHERE email = ?''',
+                (name, phone, latitude, longitude, address, bio, email)
             )
         demo_ids[email] = c.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()['id']
 
@@ -404,9 +411,9 @@ def init_db():
         c.execute('INSERT OR IGNORE INTO wallets (user_id, balance, held_balance) VALUES (?,?,0)', (demo_ids[email], 1000))
 
     demo_jobs = [
-        ('Need electrician for kitchen rewiring', 'Replace old wiring and install three new light points.', 'Electrical', 2200, 1, 12.9732, 77.6008, 'Indiranagar 12th Main'),
-        ('Fix leaking bathroom tap', 'Repair the leaking tap and check the water pressure.', 'Plumbing', 900, 1, 12.9684, 77.5887, 'Domlur near Inner Ring Road'),
-        ('Deep clean and paint living room', 'One-day deep clean followed by two accent walls.', 'Cleaning', 3500, 2, 12.9802, 77.5921, 'Ulsoor Lake area')
+        ('Need electrician for kitchen rewiring', 'Replace old wiring and install three new light points.', 'Electrical', 2200, 1, 23.2620, 77.4190, 'MP Nagar Zone 1'),
+        ('Fix leaking bathroom tap', 'Repair the leaking tap and check the water pressure.', 'Plumbing', 900, 1, 23.2660, 77.4050, 'Shahpura Main Road'),
+        ('Deep clean and paint living room', 'One-day deep clean followed by two accent walls.', 'Cleaning', 3500, 2, 23.2500, 77.4310, 'Arera Colony')
     ]
     demo_job_ids = []
     for title, description, category, budget, num_workers, latitude, longitude, location in demo_jobs:
@@ -414,6 +421,12 @@ def init_db():
         existing_job = c.fetchone()
         if existing_job:
             demo_job_ids.append(existing_job['id'])
+            c.execute(
+                '''UPDATE jobs
+                   SET latitude = ?, longitude = ?, location = ?
+                   WHERE id = ?''',
+                (latitude, longitude, location, existing_job['id'])
+            )
         else:
             c.execute(
                 '''INSERT INTO jobs
@@ -476,7 +489,7 @@ def init_db():
     if c.execute('SELECT COUNT(*) FROM sos_alerts WHERE user_id = ? AND description = ?', (demo_ids['worker2@bridge.local'], 'Demo safety check')).fetchone()[0] == 0:
         c.execute(
             'INSERT INTO sos_alerts (user_id, latitude, longitude, description) VALUES (?,?,?,?)',
-            (demo_ids['worker2@bridge.local'], 12.9650, 77.5900, 'Demo safety check')
+            (demo_ids['worker2@bridge.local'], 23.2680, 77.4010, 'Demo safety check')
         )
     if c.execute('SELECT COUNT(*) FROM complaints WHERE complainant_id = ? AND subject = ?', (demo_ids['customer@bridge.local'], 'Demo service review')).fetchone()[0] == 0:
         c.execute(
