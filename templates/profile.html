@@ -38,6 +38,7 @@
       const isLoggedIn = !!currentUser;
       const isOwn = isLoggedIn && parseInt(profileUserId) === currentUser.id;
       const previousWorkPhotos = Array.isArray(wp.previous_work_photos) ? wp.previous_work_photos : [];
+      const profilePhoto = u.profile_photo || '';
 
       let html = `
         <div class="container profile-shell">
@@ -46,7 +47,10 @@
           <div class="card profile-single-card">
             <div class="profile-header-row">
               <div class="profile-main-info">
-                <div class="profile-avatar-large">${u.name.charAt(0).toUpperCase()}</div>
+                <div class="profile-avatar-large ${profilePhoto ? 'has-photo' : ''}">
+                  ${profilePhoto ? `<img src="${profilePhoto}" alt="${u.name} profile photo">` : u.name.charAt(0).toUpperCase()}
+                  ${isOwn ? '<span class="profile-avatar-camera" aria-hidden="true">📷</span>' : ''}
+                </div>
                 <div>
                   <h2>${u.name}</h2>
                   <div class="profile-subtitle">
@@ -166,6 +170,20 @@
                 <div class="form-group"><label>Phone</label><input type="text" id="editPhone" value="${u.phone || ''}"></div>
                 <div class="form-group"><label>Address</label><input type="text" id="editAddress" value="${u.address || ''}"></div>
                 <div class="form-group"><label>Bio</label><textarea id="editBio">${u.bio || ''}</textarea></div>
+                ${u.role === 'worker' ? `
+                  <div class="form-group profile-photo-upload">
+                    <label for="editProfilePhoto">Profile Picture</label>
+                    <div class="profile-photo-picker">
+                      <div class="profile-avatar-preview ${profilePhoto ? 'has-photo' : ''}" id="profilePhotoPreview">
+                        ${profilePhoto ? `<img src="${profilePhoto}" alt="Current profile photo">` : u.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <input type="file" id="editProfilePhoto" accept="image/png,image/jpeg,image/webp,image/gif" onchange="previewProfilePhoto(this)">
+                        <small class="text-muted text-sm">Use a clear face or professional work photo.</small>
+                      </div>
+                    </div>
+                  </div>
+                ` : ''}
                 ${u.role === 'worker' && wp ? `
                   <div class="form-group"><label>Skills (comma separated)</label><input type="text" id="editSkills" value="${wp.skills || ''}"></div>
                   <div class="grid grid-2">
@@ -215,6 +233,17 @@
     }
 
     function openEditModal() { document.getElementById('editModal').classList.add('active'); }
+    function previewProfilePhoto(input) {
+      const file = input.files && input.files[0];
+      const preview = document.getElementById('profilePhotoPreview');
+      if (!file || !preview) return;
+      const reader = new FileReader();
+      reader.onload = event => {
+        preview.classList.add('has-photo');
+        preview.innerHTML = `<img src="${event.target.result}" alt="Selected profile photo preview">`;
+      };
+      reader.readAsDataURL(file);
+    }
     function openComplaintModal(uid) {
       document.getElementById('complaintModal').dataset.uid = uid;
       document.getElementById('complaintModal').classList.add('active');
@@ -246,6 +275,8 @@
         formData.append('phone', document.getElementById('editPhone').value);
         formData.append('address', document.getElementById('editAddress').value);
         formData.append('bio', document.getElementById('editBio').value);
+        const profilePhotoInput = document.getElementById('editProfilePhoto');
+        if (profilePhotoInput?.files[0]) formData.append('profile_photo', profilePhotoInput.files[0]);
 
         const skillsEl = document.getElementById('editSkills');
         if (skillsEl) {

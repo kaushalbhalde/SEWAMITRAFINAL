@@ -807,6 +807,8 @@ body.dark-theme .cooperative-hero {
 }
 
 .profile-avatar-large {
+  position: relative;
+  overflow: hidden;
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -819,6 +821,62 @@ body.dark-theme .cooperative-hero {
   font-weight: 700;
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
 }
+
+.profile-avatar-large.has-photo {
+  background: var(--neutral-200);
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.2);
+}
+
+.profile-avatar-large img,
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-avatar-camera {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--primary);
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.profile-photo-picker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px dashed var(--neutral-300);
+  border-radius: 12px;
+  background: var(--neutral-100);
+}
+
+.profile-avatar-preview {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #159a87);
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.profile-avatar-preview.has-photo { background: var(--neutral-200); }
+
+.profile-photo-picker input[type="file"] { max-width: 100%; font-size: 0.8rem; }
 
 .profile-main-info h2 {
   margin: 0;

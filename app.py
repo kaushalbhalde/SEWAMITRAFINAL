@@ -74,6 +74,7 @@ def init_db():
         longitude REAL,
         address TEXT,
         bio TEXT,
+        profile_photo TEXT,
         created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -538,6 +539,10 @@ def init_db():
     columns = [col[1] for col in conn.execute('PRAGMA table_info(worker_profiles)').fetchall()]
     if 'previous_work_photos' not in columns:
         conn.execute("ALTER TABLE worker_profiles ADD COLUMN previous_work_photos TEXT DEFAULT '[]'")
+
+    user_columns = [col[1] for col in conn.execute('PRAGMA table_info(users)').fetchall()]
+    if 'profile_photo' not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN profile_photo TEXT")
 
     # Ensure complaints table has new columns when upgrading existing DB
     comp_cols = [col[1] for col in conn.execute('PRAGMA table_info(complaints)').fetchall()]
@@ -2286,6 +2291,7 @@ def update_profile():
     is_multipart = request.mimetype == 'multipart/form-data'
     payload = request.form.to_dict() if is_multipart else (request.json or {})
     uploaded_files = request.files.getlist('previous_work_photos') if is_multipart else []
+    profile_photo_upload = request.files.get('profile_photo') if is_multipart else None
 
     existing_photos = []
     if is_multipart:
@@ -2318,13 +2324,22 @@ def update_profile():
     data['latitude'] = data.get('latitude')
     data['longitude'] = data.get('longitude')
 
+    profile_photo = data.get('profile_photo', '')
+    if profile_photo_upload and profile_photo_upload.filename:
+        extension = os.path.splitext(profile_photo_upload.filename)[1].lower()
+        if extension not in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+            return jsonify({'error': 'Profile photo must be JPG, PNG, WEBP, or GIF'}), 400
+        filename = f"{secrets.token_hex(8)}_profile{extension}"
+        profile_photo_upload.save(os.path.join(UPLOAD_FOLDER, filename))
+        profile_photo = f'/static/uploads/previous-work/{filename}'
+
     conn = get_db()
     c = conn.cursor()
     c.execute(
-        '''UPDATE users SET name = ?, phone = ?, address = ?, bio = ?, latitude = ?, longitude = ?
+          '''UPDATE users SET name = ?, phone = ?, address = ?, bio = ?, latitude = ?, longitude = ?, profile_photo = ?
            WHERE id = ?''',
         (data.get('name'), data.get('phone'), data.get('address'),
-         data.get('bio'), data.get('latitude'), data.get('longitude'), session['user_id'])
+            data.get('bio'), data.get('latitude'), data.get('longitude'), profile_photo, session['user_id'])
     )
     user = c.execute('SELECT role FROM users WHERE id = ?', (session['user_id'],)).fetchone()
     if user['role'] == 'worker':
@@ -2381,7 +2396,7 @@ def update_profile_availability():
 def get_profile(user_id):
     conn = get_db()
     user = conn.execute(
-        'SELECT id, name, email, role, phone, address, bio, id_verified, created_at FROM users WHERE id = ?',
+        'SELECT id, name, email, role, phone, address, bio, profile_photo, id_verified, created_at FROM users WHERE id = ?',
         (user_id,)
     ).fetchone()
     if not user:
