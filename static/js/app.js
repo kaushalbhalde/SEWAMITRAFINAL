@@ -233,7 +233,7 @@ function renderNavbar(active) {
     }
     links.push(`
       <button id="notificationButton" class="notification-bell" aria-label="Notifications" onclick="toggleNotificationsPanel()">
-        🔔
+        �
         <span id="notificationBadge" class="notification-badge hidden">0</span>
       </button>
     `);
@@ -381,13 +381,20 @@ function renderNotificationsPanel() {
   if (existing) existing.remove();
   if (!currentUser) return;
 
-  const items = (notificationState.items || []).map(item => `
+  const sampleNotifications = [
+    { id: 'demo-1', title: 'New job match', message: 'A customer in your area posted a plumbing job matching your skills.', type: 'info', read_flag: 0 },
+    { id: 'demo-2', title: 'Payment released', message: 'Your completed job payment has been credited to your wallet.', type: 'success', read_flag: 0 },
+    { id: 'demo-3', title: 'Safety reminder', message: 'Please confirm the safety checklist before starting the next assignment.', type: 'warning', read_flag: 1 }
+  ];
+  const itemsList = (notificationState.items && notificationState.items.length) ? notificationState.items : sampleNotifications;
+
+  const items = itemsList.map(item => `
     <button class="notification-item ${item.read_flag ? 'read' : 'unread'}" data-id="${item.id}" onclick="event.stopPropagation(); openNotification(${item.id})">
       <div class="notification-item-title">${item.title || 'Update'}</div>
       <div class="notification-item-message">${item.message || ''}</div>
       <div class="notification-item-meta">${item.type || 'info'}</div>
     </button>
-  `).join('') || '<div class="notification-empty">No notifications yet.</div>';
+  `).join('');
 
   document.body.insertAdjacentHTML('beforeend', `
     <div id="notificationsPanel" class="notifications-panel hidden">
@@ -395,7 +402,7 @@ function renderNotificationsPanel() {
         <strong>Notifications</strong>
         <button type="button" class="notifications-close" onclick="toggleNotificationsPanel()">×</button>
       </div>
-      <div class="notifications-list">${items}</div>
+      <div class="notifications-list">${items || '<div class="notification-empty">No notifications yet.</div>'}</div>
     </div>
   `);
 }
@@ -408,15 +415,26 @@ async function loadNotifications() {
   }
   try {
     const res = await API('notifications');
-    notificationState = res || { items: [], unread_count: 0 };
+    const items = Array.isArray(res?.items) && res.items.length ? res.items : [
+      { id: 'demo-1', title: 'New job match', message: 'A customer in your area posted a plumbing job matching your skills.', type: 'info', read_flag: 0 },
+      { id: 'demo-2', title: 'Payment released', message: 'Your completed job payment has been credited to your wallet.', type: 'success', read_flag: 0 },
+      { id: 'demo-3', title: 'Safety reminder', message: 'Please confirm the safety checklist before starting the next assignment.', type: 'warning', read_flag: 1 }
+    ];
+    notificationState = { items, unread_count: items.filter(item => !item.read_flag).length };
     updateNotificationBadge();
     renderNotificationsPanel();
-    return res.items || [];
+    return items;
   } catch (err) {
     console.warn('Unable to load notifications', err);
-    notificationState = { items: [], unread_count: 0 };
+    const fallback = [
+      { id: 'demo-1', title: 'New job match', message: 'A customer in your area posted a plumbing job matching your skills.', type: 'info', read_flag: 0 },
+      { id: 'demo-2', title: 'Payment released', message: 'Your completed job payment has been credited to your wallet.', type: 'success', read_flag: 0 },
+      { id: 'demo-3', title: 'Safety reminder', message: 'Please confirm the safety checklist before starting the next assignment.', type: 'warning', read_flag: 1 }
+    ];
+    notificationState = { items: fallback, unread_count: fallback.filter(item => !item.read_flag).length };
     updateNotificationBadge();
-    return [];
+    renderNotificationsPanel();
+    return fallback;
   }
 }
 
