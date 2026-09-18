@@ -59,7 +59,12 @@ body.dark-theme {
   --shadow-lg: 0 12px 24px rgba(0,0,0,0.32), 0 6px 12px rgba(0,0,0,0.25);
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -67,10 +72,15 @@ body {
   color: var(--neutral-800);
   line-height: 1.5;
   transition: background 0.2s ease, color 0.2s ease;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 a { text-decoration: none; color: inherit; }
 ul { list-style: none; }
+img, video, iframe { max-width: 100%; }
+button, input, select, textarea { max-width: 100%; }
+button, a, input, select, textarea { touch-action: manipulation; }
 
 body.dark-theme .card,
 body.dark-theme .dash-header,
@@ -469,12 +479,46 @@ body.dark-theme .impact-card {
   }
 }
 
+@media (max-width: 1100px) {
+  .cooperative-page { padding-left: 16px; padding-right: 16px; }
+  .navbar { padding-left: 16px; padding-right: 16px; }
+  .navbar-links a, .navbar-links button { padding-left: 12px; padding-right: 12px; }
+}
+
 @media (max-width: 768px) {
   .co-op-grid,
   .impact-grid,
   .co-op-stats {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 820px) {
+  .navbar {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .navbar-links {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .navbar-links a, .navbar-links button { flex: 0 0 auto; }
+  .cooperative-hero { padding: 22px; }
+  .co-op-main { padding: 16px; }
+  .co-op-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .co-op-grid, .impact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .marketplace-layout { grid-template-columns: 1fr; }
+  .profile-content-grid { grid-template-columns: 1fr; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ---------- Layout ---------- */
@@ -1617,7 +1661,7 @@ tr:hover { background: var(--neutral-50); }
 }
 
 @media (max-width: 640px) {
-  html, body { max-width: 100%; overflow-x: hidden; }
+  html, body { max-width: 100%; }
   .navbar {
     height: auto;
     min-height: 56px;
@@ -1636,6 +1680,19 @@ tr:hover { background: var(--neutral-50); }
   }
   .navbar-links a, .navbar-links button { padding: 8px 10px; font-size: 0.8rem; }
   .container { width: 100%; padding: 16px 12px; }
+  .cooperative-page { padding: 16px 12px 32px; }
+  .cooperative-hero { padding: 18px; border-radius: 18px; }
+  .cooperative-hero h1 { font-size: clamp(1.8rem, 9vw, 2.4rem); }
+  .cooperative-hero-actions, .cooperative-hero-actions .btn { width: 100%; }
+  .cooperative-hero-actions .btn { text-align: center; }
+  .co-op-main { padding: 14px; }
+  .co-op-section-header { align-items: flex-start; }
+  .co-op-tabs { gap: 8px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .co-op-tab { flex: 0 0 auto; padding: 9px 13px; }
+  .co-op-grid, .impact-grid, .co-op-stats, .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .co-op-card, .impact-card, .co-op-participation-card, .co-op-side-card { padding: 14px; }
+  .co-op-meta { flex-wrap: wrap; }
+  .page-title { font-size: 1.3rem; }
   .auth-card { padding: 24px; }
   .role-selector { grid-template-columns: 1fr; }
   .auth-wrap > div { max-width: 100%; min-width: 0; }
