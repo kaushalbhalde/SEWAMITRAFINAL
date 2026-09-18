@@ -552,6 +552,11 @@ body.dark-theme .impact-card {
   align-items: center;
 }
 
+.navbar-menu-toggle,
+.navbar-overlay {
+  display: none;
+}
+
 .navbar-links a, .navbar-links button {
   color: var(--neutral-300);
   padding: 8px 16px;
@@ -1667,16 +1672,73 @@ tr:hover { background: var(--neutral-50); }
     min-height: 56px;
     padding: 8px 12px;
     gap: 6px;
-    align-items: stretch;
-    flex-wrap: wrap;
+    align-items: center;
   }
-  .navbar-brand { flex: 0 0 auto; }
+
+  .navbar-brand { flex: 1 1 auto; }
+  .navbar-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.08);
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+  }
+
   .navbar-links {
-    flex: 1 1 100%;
+    position: fixed;
+    inset: 56px auto 0 0;
+    z-index: 102;
+    display: flex;
+    width: min(82vw, 300px);
     min-width: 0;
-    gap: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    padding: 16px 12px 24px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    overflow-y: auto;
+    background: var(--neutral-900);
+    box-shadow: 12px 0 28px rgba(0,0,0,0.22);
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+  }
+
+  .navbar.mobile-nav-open .navbar-links {
+    transform: translateX(0);
+  }
+
+  .navbar-links a, .navbar-links button {
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+  }
+
+  .navbar-links .theme-toggle {
+    width: 40px;
+    text-align: center;
+  }
+
+  .navbar-overlay {
+    position: fixed;
+    inset: 56px 0 0;
+    z-index: 101;
+    display: block;
+    border: 0;
+    background: rgba(15,23,42,0.48);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .navbar.mobile-nav-open .navbar-overlay {
+    opacity: 1;
+    pointer-events: auto;
   }
   .navbar-links a, .navbar-links button { padding: 8px 10px; font-size: 0.8rem; }
   .container { width: 100%; padding: 16px 12px; }
@@ -1735,58 +1797,4 @@ tr:hover { background: var(--neutral-50); }
   .messages-page-grid,
   .grid[style*="grid-template-columns:280px"] { grid-template-columns: 1fr !important; }
   .team-member-row { grid-template-columns: 1fr !important; }
-}
-
-@media (max-width: 480px) {
-  .co-op-main {
-    display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-  }
-
-  .co-op-section-header {
-    grid-column: 1 / -1;
-  }
-
-  .co-op-tabs {
-    grid-column: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 0;
-    position: sticky;
-    top: 68px;
-  }
-
-  .co-op-tab {
-    width: 76px;
-    min-height: 48px;
-    padding: 8px 4px;
-    border-radius: 10px;
-    font-size: 0.68rem;
-    line-height: 1.15;
-    overflow-wrap: anywhere;
-  }
-
-  .co-op-tab-panel.active {
-    grid-column: 2;
-    min-width: 0;
-  }
-
-  .co-op-card,
-  .impact-card {
-    padding: 12px;
-    gap: 9px;
-  }
-
-  .co-op-card h3,
-  .impact-card h3 {
-    font-size: 0.98rem;
-  }
-
-  .co-op-card p,
-  .impact-card p {
-    font-size: 0.82rem;
-  }
 }

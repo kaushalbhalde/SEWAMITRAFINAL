@@ -247,9 +247,21 @@ function renderNavbar(active) {
   return `
     <nav class="navbar">
       <div class="navbar-brand">SEWAMITRA<span>.</span></div>
-      <div class="navbar-links">${links.join('')}</div>
+      <button class="navbar-menu-toggle" type="button" onclick="toggleMobileNav()" aria-label="Open navigation" aria-controls="navbarLinks" aria-expanded="false">☰</button>
+      <div class="navbar-links" id="navbarLinks">${links.join('')}</div>
+      <button class="navbar-overlay" type="button" onclick="toggleMobileNav(false)" aria-label="Close navigation"></button>
     </nav>
   `;
+}
+
+function toggleMobileNav(force) {
+  const navbar = document.querySelector('.navbar');
+  const toggle = document.querySelector('.navbar-menu-toggle');
+  if (!navbar || !toggle) return;
+  const open = force === undefined ? !navbar.classList.contains('mobile-nav-open') : force;
+  navbar.classList.toggle('mobile-nav-open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
 }
 
 function renderSOSFab() {
