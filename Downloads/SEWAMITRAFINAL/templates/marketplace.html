@@ -16,20 +16,6 @@
       if (!ok) return;
       const products = await API('products');
       const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
-      const bhopalCenter = { lat: 23.2599, lng: 77.4126 };
-
-      const shops = [
-        { name: 'Carpentry Tools Hub', type: 'Carpentry', lat: 23.2592, lng: 77.4068, icon: '🪚', distance: '0.8 km' },
-        { name: 'Plumber Pro Store', type: 'Plumbing', lat: 23.2557, lng: 77.4189, icon: '🔧', distance: '1.4 km' },
-        { name: 'Home Fix Supplies', type: 'General Tools', lat: 23.2644, lng: 77.4092, icon: '🧰', distance: '1.1 km' },
-        { name: 'Electric & Safety Mart', type: 'Electrical', lat: 23.2673, lng: 77.4205, icon: '⚡', distance: '2.0 km' }
-      ];
-
-      const workers = [
-        { name: 'Ravi', skill: 'Carpentry', distance: '0.9 km', status: 'Online now' },
-        { name: 'Naveen', skill: 'Plumbing', distance: '1.3 km', status: 'Available' },
-        { name: 'Suresh', skill: 'Tool fitting', distance: '2.1 km', status: 'Logged in' }
-      ];
 
       document.getElementById('page').innerHTML = `
         <div class="container">
@@ -39,55 +25,12 @@
           <div class="marketplace-layout">
             <div class="card market-map-panel">
               <div class="flex-between mb-12">
-                <h3 class="card-title">Nearby market & workers</h3>
+                <h3 class="card-title">Nearby shops</h3>
                 <span class="text-sm text-muted">Bhopal, India</span>
               </div>
 
               <div class="market-map-shell">
                 <iframe title="Nearby shops in Bhopal, India" loading="lazy" src="https://www.google.com/maps?q=shops+near+Bhopal,+India&z=13&output=embed"></iframe>
-                ${shops.map((shop, index) => `
-                  <div class="market-pin" style="left:${50 + (shop.lng - bhopalCenter.lng) * 1800}%; top:${50 - (shop.lat - bhopalCenter.lat) * 1800}%;">
-                    <span>${shop.icon}</span>
-                    <small>${shop.type}</small>
-                  </div>
-                `).join('')}
-              </div>
-
-              <div class="market-legend">
-                ${shops.map(shop => `<span><i style="background:${shop.type === 'Carpentry' ? '#f97316' : shop.type === 'Plumbing' ? '#2563eb' : '#16a34a'}"></i>${shop.name}</span>`).join('')}
-              </div>
-            </div>
-
-            <div class="market-sidebar">
-              <div class="card mb-16">
-                <h3 class="card-title">Nearby shops</h3>
-                <div class="market-mini-list">
-                  ${shops.map(shop => `
-                    <div class="market-mini-item">
-                      <div class="market-mini-badge">${shop.icon}</div>
-                      <div>
-                        <strong>${shop.name}</strong>
-                        <div class="text-sm text-muted">${shop.type} • ${shop.distance}</div>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-
-              <div class="card">
-                <h3 class="card-title">Workers logged in</h3>
-                <div class="market-mini-list">
-                  ${workers.map(worker => `
-                    <div class="market-mini-item">
-                      <div class="market-mini-badge online">👷</div>
-                      <div>
-                        <strong>${worker.name}</strong>
-                        <div class="text-sm text-muted">${worker.skill} • ${worker.distance}</div>
-                        <div class="text-sm status-live">${worker.status}</div>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
               </div>
             </div>
           </div>
