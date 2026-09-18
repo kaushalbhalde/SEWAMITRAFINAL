@@ -14,10 +14,13 @@ function t(key, vars = {}) {
 }
 
 function translateUiValue(source) {
-  let value = TRANSLATIONS[currentLanguage]?.[source] || TRANSLATIONS.en?.[source] || source;
   const dictionary = TRANSLATIONS[currentLanguage] || {};
+  const exactKey = Object.keys(dictionary).find(key => key.toLowerCase() === source.toLowerCase());
+  let value = exactKey ? dictionary[exactKey] : source;
+  if (value === source && TRANSLATIONS.en?.[source]) value = TRANSLATIONS.en[source];
   Object.keys(dictionary).sort((a, b) => b.length - a.length).forEach(key => {
-    value = value.split(key).join(dictionary[key]);
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    value = value.replace(new RegExp(escapedKey, 'gi'), dictionary[key]);
   });
   return translateUiWords(value);
 }
