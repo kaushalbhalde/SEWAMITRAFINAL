@@ -519,27 +519,6 @@ body.dark-theme .impact-card {
   .marketplace-layout { grid-template-columns: 1fr; }
   .profile-content-grid { grid-template-columns: 1fr; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  .tabs {
-    width: min(220px, 100%);
-    flex-direction: column;
-    align-items: stretch;
-    border-right: 2px solid var(--neutral-200);
-    border-bottom: 0;
-    overflow-x: visible;
-    overflow-y: auto;
-  }
-
-  .tab {
-    width: 100%;
-    margin-bottom: 0;
-    border-bottom: 0;
-    border-right: 3px solid transparent;
-    padding: 11px 14px;
-    text-align: left;
-  }
-
-  .tab.active { border-right-color: var(--primary); }
 }
 
 /* ---------- Layout ---------- */
@@ -1756,4 +1735,58 @@ tr:hover { background: var(--neutral-50); }
   .messages-page-grid,
   .grid[style*="grid-template-columns:280px"] { grid-template-columns: 1fr !important; }
   .team-member-row { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+  .co-op-main {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .co-op-section-header {
+    grid-column: 1 / -1;
+  }
+
+  .co-op-tabs {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    position: sticky;
+    top: 68px;
+  }
+
+  .co-op-tab {
+    width: 76px;
+    min-height: 48px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .co-op-tab-panel.active {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .co-op-card,
+  .impact-card {
+    padding: 12px;
+    gap: 9px;
+  }
+
+  .co-op-card h3,
+  .impact-card h3 {
+    font-size: 0.98rem;
+  }
+
+  .co-op-card p,
+  .impact-card p {
+    font-size: 0.82rem;
+  }
 }
