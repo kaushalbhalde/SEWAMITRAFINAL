@@ -8,7 +8,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory, session
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-app.secret_key = secrets.token_hex(24)
+app.secret_key = os.environ.get('SEWAMITRA_SECRET_KEY', 'sewamitra-local-development-secret')
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bridge.db')
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'previous-work')

@@ -15,28 +15,85 @@
       const ok = await initPage('orders');
       if (!ok) return;
       const orders = await API('orders');
+      const products = currentUser.role === 'business' ? [] : await API('products');
 
       document.getElementById('page').innerHTML += `
         <div class="container">
-          <div class="page-title">My Orders</div>
+          <div class="flex-between orders-heading">
+            <div>
+              <div class="page-title">My Orders</div>
+              <p class="text-muted">Track purchases and try the demo shop below.</p>
+            </div>
+            ${currentUser.role !== 'business' ? '<button class="btn btn-primary" type="button" onclick="scrollToDemoStore()">🛍️ Demo Store</button>' : ''}
+          </div>
           <div id="ordersList"></div>
+          ${currentUser.role !== 'business' ? `
+            <section class="card demo-order-shell" id="demoStore">
+              <div class="flex-between flex-wrap">
+                <div><span class="section-kicker">Prototype checkout</span><h2 class="card-title">Demo product store</h2></div>
+                <button class="btn btn-secondary" type="button" onclick="openDemoCart()">🛒 Cart <span id="demoCartCount" class="cart-count">0</span></button>
+              </div>
+              <p class="text-muted text-sm mb-16">Add a tool to the cart and place a sample order for your demonstration.</p>
+              <div id="demoProducts" class="grid grid-3"></div>
+            </section>
+          ` : ''}
         </div>
       `;
 
       const el = document.getElementById('ordersList');
       if (!orders.length) {
         el.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>No orders yet.</p></div>';
-        return;
+      } else {
+        el.innerHTML = `<div class="table-wrap"><table>
+          <tr><th>Order</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th></tr>
+          ${orders.map(o => `<tr>
+            <td>#${o.id}</td><td>${o.product_name}</td><td>${o.quantity}</td>
+            <td>${fmtMoney(o.total_price)}</td><td>${statusBadge(o.status)}</td>
+            <td>${fmtDate(o.created_at)}</td>
+          </tr>`).join('')}
+        </table></div>`;
       }
-      el.innerHTML = `<div class="table-wrap"><table>
-        <tr><th>Order</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th></tr>
-        ${orders.map(o => `<tr>
-          <td>#${o.id}</td><td>${o.product_name}</td><td>${o.quantity}</td>
-          <td>${fmtMoney(o.total_price)}</td><td>${statusBadge(o.status)}</td>
-          <td>${fmtDate(o.created_at)}</td>
-        </tr>`).join('')}
-      </table></div>`;
+
+      if (products.length) {
+        document.getElementById('demoProducts').innerHTML = products.slice(0, 6).map(product => `
+          <article class="product-card demo-product-card">
+            <div class="product-img">${product.image_url || '📦'}</div>
+            <div class="product-body"><div class="product-name">${product.name}</div><div class="product-desc">${product.description || ''}</div><div class="product-price">${fmtMoney(product.price)}</div><button class="btn btn-sm btn-primary mt-8" type="button" onclick="addDemoProduct(${product.id})">Add to cart</button></div>
+          </article>
+        `).join('');
+      }
+      updateDemoCartCount();
     })();
+
+    let demoCart = JSON.parse(localStorage.getItem('sewamitra-cart') || '[]');
+    function updateDemoCartCount() {
+      const badge = document.getElementById('demoCartCount');
+      if (badge) badge.textContent = demoCart.reduce((sum, item) => sum + item.quantity, 0);
+    }
+    function addDemoProduct(productId) {
+      const product = [...document.querySelectorAll('.demo-product-card')].find(card => card.querySelector(`button[onclick="addDemoProduct(${productId})"]`));
+      if (!product) return;
+      const name = product.querySelector('.product-name').textContent;
+      const price = Number(product.querySelector('.product-price').textContent.replace(/[^0-9.]/g, ''));
+      const existing = demoCart.find(item => item.product_id === productId);
+      if (existing) existing.quantity += 1;
+      else demoCart.push({ product_id: productId, name, price, quantity: 1, stock: 99 });
+      localStorage.setItem('sewamitra-cart', JSON.stringify(demoCart));
+      updateDemoCartCount();
+      toast(name + ' added to cart', 'success');
+    }
+    function scrollToDemoStore() { document.getElementById('demoStore')?.scrollIntoView({ behavior: 'smooth' }); }
+    function openDemoCart() {
+      if (!demoCart.length) { toast('Add a product to the demo cart first', 'error'); return; }
+      const summary = demoCart.map(item => `${item.name} x${item.quantity}`).join('\n');
+      const method = prompt(`Demo cart:\n${summary}\n\nChoose payment: wallet, upi, or card`, 'wallet');
+      if (!method) return;
+      const paymentMethod = method.toLowerCase().trim();
+      if (!['wallet', 'upi', 'card'].includes(paymentMethod)) { toast('Choose wallet, upi, or card', 'error'); return; }
+      API('orders/checkout', { method: 'POST', body: JSON.stringify({ items: demoCart.map(item => ({ product_id: item.product_id, quantity: item.quantity })), payment_method: paymentMethod }) })
+        .then(result => { demoCart = []; localStorage.setItem('sewamitra-cart', '[]'); updateDemoCartCount(); toast('Demo order placed: ' + fmtMoney(result.total), 'success'); setTimeout(() => window.location.reload(), 800); })
+        .catch(error => toast(error.message, 'error'));
+    }
   </script>
 </body>
 </html>

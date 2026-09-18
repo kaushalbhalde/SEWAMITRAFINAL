@@ -25,7 +25,10 @@
               <h2>Welcome, ${currentUser.name}</h2>
               <div class="role-tag">Business Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
             </div>
-            <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+            <div class="flex-row flex-wrap">
+              <a class="btn btn-secondary" href="/marketplace.html">View Product Store</a>
+              <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+            </div>
           </div>
 
           <div class="stat-grid">

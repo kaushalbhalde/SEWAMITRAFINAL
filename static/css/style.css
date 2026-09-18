@@ -878,6 +878,21 @@ body.dark-theme .cooperative-hero {
 
 .profile-photo-picker input[type="file"] { max-width: 100%; font-size: 0.8rem; }
 
+.orders-heading { align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+.orders-heading .page-title { margin-bottom: 4px; }
+.demo-order-shell { margin-top: 28px; padding: 22px; background: linear-gradient(135deg, #ffffff, #f0faf7); }
+.demo-order-shell .section-kicker { color: var(--primary); }
+.demo-product-card { height: 100%; }
+.demo-product-card .product-body { display: flex; min-height: 174px; flex-direction: column; align-items: flex-start; }
+.demo-product-card .product-price { margin-top: auto; }
+.demo-product-card .btn { align-self: stretch; }
+
+@media (max-width: 640px) {
+  .orders-heading { align-items: flex-start; flex-direction: column; }
+  .orders-heading .btn { width: 100%; }
+  .demo-order-shell { padding: 16px; }
+}
+
 .profile-main-info h2 {
   margin: 0;
   font-size: clamp(1.25rem, 2.4vw, 1.7rem);
