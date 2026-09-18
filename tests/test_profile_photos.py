@@ -65,6 +65,11 @@ class WorkerProfilePhotoTests(unittest.TestCase):
             disabled_profile = client.get(f"/api/profile/{user['id']}").get_json()
             self.assertEqual(disabled_profile['worker_profile']['availability'], 0)
 
+            enable_resp = client.put('/api/profile/availability', json={'availability': 1})
+            self.assertEqual(enable_resp.status_code, 200)
+            enabled_profile = client.get(f"/api/profile/{user['id']}").get_json()
+            self.assertEqual(enabled_profile['worker_profile']['availability'], 1)
+
     def test_public_profile_view_does_not_require_login(self):
         with app_module.app.test_client() as client:
             user = client.application.config.get('TEST_USER_ID')

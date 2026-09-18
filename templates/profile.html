@@ -89,7 +89,7 @@
                       <div class="profile-info-item"><div class="icon">🛠️</div><div><strong>Skills:</strong> ${(wp.skills || '').split(',').filter(s => s).map(s => `<span class="skill-tag">${s}</span>`).join('') || 'Not added yet'}</div></div>
                       <div class="profile-info-item"><div class="icon">💰</div><div><strong>Hourly:</strong> ${wp.hourly_rate ? fmtMoney(wp.hourly_rate) : 'Not set'}</div></div>
                       <div class="profile-info-item"><div class="icon">📅</div><div><strong>Daily:</strong> ${wp.daily_rate ? fmtMoney(wp.daily_rate) : 'Not set'}</div></div>
-                      <div class="profile-info-item"><div class="icon">✅</div><div><strong>Availability:</strong> ${wp.availability ? 'Available' : 'Unavailable'}</div></div>
+                      <div class="profile-info-item"><div class="icon">✅</div><div><strong>Availability:</strong> ${wp.availability ? 'Available' : 'Unavailable'}${isOwn ? ` <label class="text-sm"><input type="checkbox" id="profileAvailability" ${wp.availability ? 'checked' : ''} onchange="updateWorkerAvailability(this.checked, this)"> Available for work</label>` : ''}</div></div>
                       <div class="profile-info-item"><div class="icon">🎓</div><div><strong>Certification:</strong> <a class="btn btn-secondary btn-sm" href="https://www.skillindiadigital.gov.in/sector/list?forCourse=true" target="_blank" rel="noopener noreferrer">Get Certified</a></div></div>
                     </div>
                   ` : '<div class="text-muted text-sm">This profile does not have worker details yet.</div>'}
@@ -220,6 +220,23 @@
       document.getElementById('complaintModal').classList.add('active');
     }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function updateWorkerAvailability(available, checkbox) {
+      try {
+        const response = await fetch('/api/profile/availability', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ availability: available ? 1 : 0 }),
+          credentials: 'same-origin'
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'Availability update failed');
+        toast(available ? 'You are now available for work.' : 'You are now unavailable for work.', 'success');
+      } catch (err) {
+        checkbox.checked = !available;
+        toast(err.message, 'error');
+      }
+    }
 
     document.addEventListener('submit', async e => {
       if (e.target.id === 'editForm') {

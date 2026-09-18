@@ -2254,6 +2254,22 @@ def update_profile():
     return jsonify({'message': 'Profile updated'})
 
 
+@app.route('/api/profile/availability', methods=['PUT'])
+@login_required
+def update_profile_availability():
+    user_id = session['user_id']
+    availability = 1 if str((request.json or {}).get('availability', 0)).lower() in ('1', 'true', 'yes', 'on') else 0
+    conn = get_db()
+    user = conn.execute('SELECT role FROM users WHERE id = ?', (user_id,)).fetchone()
+    if not user or user['role'] != 'worker':
+        conn.close()
+        return jsonify({'error': 'Only workers can update availability'}), 403
+    conn.execute('UPDATE worker_profiles SET availability = ? WHERE user_id = ?', (availability, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'availability': availability})
+
+
 @app.route('/api/profile/<int:user_id>', methods=['GET'])
 def get_profile(user_id):
     conn = get_db()
