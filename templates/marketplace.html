@@ -16,6 +16,12 @@
       if (!ok) return;
       const products = await API('products');
       const nearbyProducts = [...new Map(products.map(product => [product.name.trim().toLowerCase(), product])).values()].slice(0, 10);
+      const demoShops = [
+        { name: 'Bhopal Carpentry Tools', category: 'Carpentry tools', icon: '🪚', distance: '1.2 km away', position: '28% 35%' },
+        { name: 'Narmada Plumbing Mart', category: 'Plumbing tools', icon: '🔧', distance: '2.4 km away', position: '67% 31%' },
+        { name: 'Lakeview Electricals', category: 'Electrical tools', icon: '⚡', distance: '3.1 km away', position: '43% 66%' },
+        { name: 'Bharat Hardware Hub', category: 'Hardware essentials', icon: '🧰', distance: '3.8 km away', position: '76% 70%' }
+      ];
 
       document.getElementById('page').innerHTML = `
         <div class="container">
@@ -31,8 +37,35 @@
 
               <div class="market-map-shell">
                 <iframe title="Nearby shops in Bhopal, India" loading="lazy" src="https://www.google.com/maps?q=shops+near+Bhopal,+India&z=13&output=embed"></iframe>
+                ${demoShops.map(shop => `
+                  <div class="market-pin" style="left:${shop.position}" title="${shop.name} - ${shop.category}" aria-label="${shop.name}, ${shop.category}">
+                    <span>${shop.icon}</span>
+                    <small>${shop.name}</small>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="market-legend" aria-label="Shop categories">
+                ${demoShops.map(shop => `<span><i></i>${shop.category}</span>`).join('')}
               </div>
             </div>
+            <aside class="card market-sidebar">
+              <div class="flex-between">
+                <h3 class="card-title">Shops nearby</h3>
+                <span class="badge badge-open">4 open</span>
+              </div>
+              <div class="market-mini-list">
+                ${demoShops.map(shop => `
+                  <div class="market-mini-item">
+                    <div class="market-mini-badge online">${shop.icon}</div>
+                    <div>
+                      <strong>${shop.name}</strong>
+                      <div class="text-sm text-muted">${shop.category}</div>
+                      <div class="status-live text-sm">Open · ${shop.distance}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </aside>
           </div>
 
           <div id="productsGrid" class="mt-16"></div>
