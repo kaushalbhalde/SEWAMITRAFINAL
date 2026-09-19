@@ -16,10 +16,10 @@
     let myGroup = null;
 
     (async function() {
-      const ok = await initPage('jobs', ['customer', 'worker', 'admin']);
+      const ok = await initPage('jobs', ['customer', 'worker', 'service-team', 'admin']);
       if (!ok) return;
 
-      if (currentUser.role === 'worker') {
+      if (currentUser.role === 'worker' || currentUser.role === 'service-team') {
         try { myGroup = await API('groups/my'); } catch {}
       }
 
@@ -58,7 +58,7 @@
           </div>
       `;
 
-      if (currentUser.role === 'worker' && j.status === 'open') {
+      if ((currentUser.role === 'worker' || currentUser.role === 'service-team') && j.status === 'open') {
         html += `
           <div class="card">
             <h3 class="card-title">Apply for this Job</h3>

@@ -119,12 +119,18 @@ async function checkAuth() {
   }
 }
 
+function normalizeRoleForAccess(role) {
+  return role === 'service-team' ? 'worker' : role;
+}
+
 function requireAuth(roles) {
   if (!currentUser) {
     window.location.href = '/';
     return false;
   }
-  if (roles && !roles.includes(currentUser.role)) {
+  const allowedRoles = (roles || []).map(normalizeRoleForAccess);
+  const userRole = normalizeRoleForAccess(currentUser.role);
+  if (roles && !allowedRoles.includes(userRole)) {
     window.location.href = getDashboardUrl(currentUser.role);
     return false;
   }
@@ -133,7 +139,7 @@ function requireAuth(roles) {
 
 function getDashboardUrl(role) {
   const map = {
-    customer: 'customer', worker: 'worker', 'service-team': 'worker', business: 'business', admin: 'admin'
+    customer: 'customer', worker: 'worker', 'service-team': 'service-team', business: 'business', admin: 'admin'
   };
   return '/' + (map[role] || '') + '.html';
 }

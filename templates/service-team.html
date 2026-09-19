@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Worker Dashboard - SEWAMITRA</title>
+  <title>Service Team Dashboard - SEWAMITRA</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -12,8 +12,9 @@
   <script src="/static/js/app.js"></script>
   <script>
     (async function() {
-      const ok = await initPage('dashboard', ['worker', 'service-team']);
+      const ok = await initPage('dashboard', ['service-team']);
       if (!ok) return;
+
       const me = await API('auth/me');
       const walletRes = await API('wallet');
       const appsRes = await API('applications/my');
@@ -25,7 +26,7 @@
           <div class="dash-header">
             <div>
               <h2>Welcome, ${currentUser.name}</h2>
-              <div class="role-tag">Worker Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
+              <div class="role-tag">Service Team Account ${currentUser.id_verified ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Unverified</span>'}</div>
             </div>
             <button class="btn btn-primary" onclick="window.location.href='/cooperative.html'">Explore Community Gigs</button>
           </div>
@@ -34,15 +35,13 @@
             <div class="stat-card"><div class="stat-value">${appsRes.length}</div><div class="stat-label">Applications</div></div>
             <div class="stat-card"><div class="stat-value">${activeAssignments.length}</div><div class="stat-label">Active Jobs</div></div>
             <div class="stat-card"><div class="stat-value">${fmtMoney(walletRes.wallet.balance)}</div><div class="stat-label">Wallet Balance</div></div>
-            <div class="stat-card"><div class="stat-value">${me.worker_profile?.hourly_rate ? fmtMoney(me.worker_profile.hourly_rate) : '-'}</div><div class="stat-label">Hourly Rate</div></div>
+            <div class="stat-card"><div class="stat-value">${me.worker_profile?.hourly_rate ? fmtMoney(me.worker_profile.hourly_rate) : '-'}</div><div class="stat-label">Team Rate</div></div>
           </div>
 
-          ${me.worker_profile ? `
           <div class="card mb-16">
-            <h3 class="card-title">Your Skills</h3>
-            <div>${(me.worker_profile.skills || '').split(',').filter(s => s).map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
-            <p class="text-sm text-muted mt-8">Daily Rate: ${me.worker_profile.daily_rate ? fmtMoney(me.worker_profile.daily_rate) : 'Not set'} | Availability: ${me.worker_profile.availability ? 'Available' : 'Unavailable'}</p>
-          </div>` : ''}
+            <h3 class="card-title">Your Team</h3>
+            <p class="text-sm text-muted">Manage jobs, community work, and wallet activity with the same workflow as a worker account.</p>
+          </div>
 
           <div class="tabs">
             <div class="tab active" onclick="switchTab('apps')">My Applications</div>
@@ -110,10 +109,10 @@
                   <span>${statusBadge(a.status)}</span>
                   <span>${fmtMoney(a.agreed_price)} (${a.price_type})</span>
                 </div>
-                ${a.status === 'in_progress' ? '<p class="text-sm text-muted">Mark as done when you finish the work.</p>' : ''}
-                ${a.status === 'pending_completion' ? '<p class="text-sm" style="color:var(--warning);">Waiting for customer to confirm and release payment</p>' : ''}
+                ${a.status === 'in_progress' ? '<p class="text-sm text-muted">Mark as done when the team finishes the work.</p>' : ''}
+                ${a.status === 'pending_completion' ? '<p class="text-sm" style="color:var(--warning);">Waiting for customer confirmation.</p>' : ''}
               </div>
-                <div>
+              <div>
                 ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-success" onclick="markDone(${a.id})">Mark as Done</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${a.customer_id}'">Message</button>
                 ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-danger" onclick="cancelAssignment(${a.id})">Cancel Assignment</button>` : ''}
@@ -169,7 +168,7 @@
       const reason = prompt('Reason for cancelling this assignment (required):', '');
       if (reason === null) return;
       if (!reason.trim()) { alert('Please provide a reason for cancellation'); return; }
-      if (!confirm('Are you sure you want to cancel this assignment? This will reopen the job and refund the customer.')) return;
+      if (!confirm('Are you sure you want to cancel this assignment?')) return;
       try {
         await API('assignments/' + assignmentId + '/cancel', { method: 'POST', body: JSON.stringify({ reason }) });
         toast('Assignment cancelled', 'success');

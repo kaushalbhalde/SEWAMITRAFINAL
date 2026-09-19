@@ -85,7 +85,7 @@
                 ${u.bio ? `<div class="profile-bio">${u.bio}</div>` : ''}
               </div>
 
-              ${u.role === 'worker' ? `
+              ${(u.role === 'worker' || u.role === 'service-team') ? `
                 <div class="profile-info-block">
                   <h3>Quick Details</h3>
                   ${wp ? `
@@ -130,7 +130,7 @@
           </div>
       `;
 
-      if (u.role === 'worker') {
+      if (u.role === 'worker' || u.role === 'service-team') {
         html += `
           <div class="card">
             <div class="flex-between flex-wrap">

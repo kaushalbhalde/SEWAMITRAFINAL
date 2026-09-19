@@ -13,7 +13,7 @@
   <script>
     let reports = [];
     (async function() {
-      const ok = await initPage('committee', ['worker', 'admin']);
+      const ok = await initPage('committee', ['worker', 'service-team', 'admin']);
       if (!ok) return;
 
       reports = await API('committee');

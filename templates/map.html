@@ -19,7 +19,7 @@
     const jobLat = parseFloat(mapParams.get('lat'));
     const jobLng = parseFloat(mapParams.get('lng'));
     (async function() {
-      const ok = await initPage('map', ['customer', 'worker', 'admin']);
+      const ok = await initPage('map', ['customer', 'worker', 'service-team', 'admin']);
       if (!ok) return;
       categories = await API('job-categories');
       myLat = Number.isFinite(jobLat) ? jobLat : defaultCenter.lat;

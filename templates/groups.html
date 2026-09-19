@@ -13,7 +13,7 @@
   <script>
     let myGroup = null;
     (async function() {
-      const ok = await initPage('groups', ['worker']);
+      const ok = await initPage('groups', ['worker', 'service-team']);
       if (!ok) return;
 
       try { myGroup = await API('groups/my'); } catch {}

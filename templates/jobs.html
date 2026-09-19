@@ -13,7 +13,7 @@
   <script>
     let categories = [];
     (async function() {
-      const ok = await initPage('jobs', ['customer', 'worker', 'admin']);
+      const ok = await initPage('jobs', ['customer', 'worker', 'service-team', 'admin']);
       if (!ok) return;
       categories = await API('job-categories');
       const jobsRes = await API('jobs');
@@ -23,7 +23,7 @@
           <div class="page-title">${currentUser.role === 'customer' ? 'My Posted Jobs' : 'Available Jobs'}</div>
           ${currentUser.role === 'customer' ? `<button class="btn btn-primary mb-16" onclick="openJobModal()">+ Post a Job</button>` : ''}
 
-          ${currentUser.role === 'worker' ? `
+          ${(currentUser.role === 'worker' || currentUser.role === 'service-team') ? `
           <div class="card mb-16">
             <div class="form-group" style="margin:0;">
               <label>Filter by Category</label>
