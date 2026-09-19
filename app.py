@@ -1932,16 +1932,36 @@ def get_contacts():
     user = current_user()
     conn = get_db()
     rows = conn.execute(
-        '''SELECT DISTINCT
-           CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as other_id,
-           u.name as other_name, u.role as other_role
-           FROM messages m
-           JOIN users u ON u.id = CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END
-           WHERE sender_id = ? OR receiver_id = ?''',
-        (user['id'], user['id'], user['id'], user['id'])
+        '''SELECT
+           other_id,
+           u.name as other_name,
+           u.role as other_role,
+           MAX(m.created_at) as last_message_time,
+           (SELECT COUNT(*) FROM messages m2
+            WHERE m2.receiver_id = ? AND m2.sender_id = other_id AND m2.read_flag = 0) as unread_count,
+           (SELECT m3.content FROM messages m3
+            WHERE ((m3.sender_id = ? AND m3.receiver_id = other_id)
+               OR (m3.sender_id = other_id AND m3.receiver_id = ?))
+            ORDER BY m3.created_at DESC, m3.id DESC LIMIT 1) as last_message
+           FROM (
+             SELECT CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as other_id,
+                    created_at, sender_id, receiver_id, content
+             FROM messages
+             WHERE sender_id = ? OR receiver_id = ?
+           ) m
+           JOIN users u ON u.id = m.other_id
+           GROUP BY other_id, u.name, u.role
+           ORDER BY last_message_time DESC''',
+        (user['id'], user['id'], user['id'], user['id'], user['id'], user['id'])
     ).fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    contacts = []
+    for row in rows:
+        item = dict(row)
+        item['last_message'] = item.get('last_message') or 'No messages yet'
+        item['unread_count'] = int(item.get('unread_count') or 0)
+        contacts.append(item)
+    return jsonify(contacts)
 
 
 # ---------------------------------------------------------------------------
