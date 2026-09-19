@@ -503,10 +503,20 @@ def init_db():
             (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'], 'Demo committee report')
         )
 
-    if c.execute('SELECT COUNT(*) FROM messages WHERE sender_id = ? AND receiver_id = ?', (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'])).fetchone()[0] == 0:
+    message_examples = [
+        (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'], 'Hi Arjun, are you available for the kitchen rewiring job?', 1, '2026-09-15 09:15:00'),
+        (demo_ids['worker1@bridge.local'], demo_ids['customer@bridge.local'], 'Yes, I can do it tomorrow morning. I will bring the materials checklist for approval.', 1, '2026-09-15 09:18:00'),
+        (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'], 'Perfect. Please confirm the estimate before 11 AM.', 0, '2026-09-15 09:20:00'),
+        (demo_ids['customer@bridge.local'], demo_ids['kaushal@bridge.local'], 'Hello Kaushal, can you arrange a vegetarian thali for 12 guests this weekend?', 1, '2026-09-16 18:05:00'),
+        (demo_ids['kaushal@bridge.local'], demo_ids['customer@bridge.local'], 'Absolutely. I can prepare a custom menu with snacks, main course, and dessert. I can share the exact pricing today.', 1, '2026-09-16 18:12:00'),
+        (demo_ids['customer@bridge.local'], demo_ids['worker2@bridge.local'], 'I need a plumber for a leaking bathroom tap. Can you come by today after 5 PM?', 0, '2026-09-18 16:40:00'),
+        (demo_ids['business'], demo_ids['customer@bridge.local'], 'Your order for the emergency light is in review. We will update you once dispatched.', 1, '2026-09-18 11:15:00'),
+        (demo_ids['customer@bridge.local'], demo_ids['business'], 'Thanks, please keep me posted on the delivery timeline.', 1, '2026-09-18 11:16:00')
+    ]
+    for sender_id, receiver_id, content, read_flag, created_at in message_examples:
         c.execute(
-            'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?,?,?)',
-            (demo_ids['customer@bridge.local'], demo_ids['worker1@bridge.local'], 'Hi Arjun, are you available for the kitchen rewiring job?')
+            'INSERT OR IGNORE INTO messages (sender_id, receiver_id, content, read_flag, created_at) VALUES (?,?,?,?,?)',
+            (sender_id, receiver_id, content, read_flag, created_at)
         )
     for user_email, title, message, ntype in [
         ('customer@bridge.local', 'Job update', 'Your kitchen rewiring request is now assigned to a verified worker.', 'info'),
