@@ -226,7 +226,7 @@ body.dark-theme .impact-card {
 }
 
 body.dark-theme .cooperative-hero {
-  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg') center / cover;
+  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/e3b7850cf9f9d0ee_carpentry%20work.jpg') center / cover;
 }
 
 body.dark-theme .tabs,
@@ -257,7 +257,7 @@ body.dark-theme .notifications-panel {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/d7bb45bdf7d06ef3_carpentry%20work2.jpg') center / cover;
+  background: linear-gradient(90deg, rgba(6, 31, 24, 0.86), rgba(6, 31, 24, 0.48)), url('/static/uploads/previous-work/e3b7850cf9f9d0ee_carpentry%20work.jpg') center / cover;
   color: white;
   border: 1px solid rgba(148,163,184,0.25);
   border-radius: 24px;
@@ -1209,11 +1209,10 @@ body.dark-theme .notifications-panel {
 
 /* ---------- Auth ---------- */
 .auth-wrap {
-  min-height: calc(100vh - 56px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px 24px;
   background: linear-gradient(135deg, var(--neutral-900), var(--primary-dark));
 }
 
@@ -1263,7 +1262,6 @@ body.dark-theme .notifications-panel {
 .landing-page .auth-wrap {
   position: relative;
   z-index: 2;
-  min-height: calc(100vh - 100px);
   min-height: calc(100dvh - 100px);
   background: transparent;
 }
@@ -2377,4 +2375,192 @@ tr:hover { background: var(--table-hover); }
   .marketplace-heading { align-items: flex-start; flex-direction: column; }
   .cart-trigger { width: 100%; }
   .role-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Leaflet shop map  (marketplace page)
+──────────────────────────────────────────────────────────── */
+.shop-leaflet-map {
+  height: 400px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--neutral-200);
+  margin-top: 10px;
+  z-index: 0;
+}
+
+/* Customer radar pin */
+.cust-radar-pin {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cust-dot {
+  width: 14px;
+  height: 14px;
+  background: #2563eb;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.5);
+  z-index: 2;
+  position: relative;
+}
+.cust-radar-ring {
+  position: absolute;
+  inset: 0;
+  border: 2.5px solid #2563eb;
+  border-radius: 50%;
+  opacity: 0;
+  animation: radarPulse 2s ease-out infinite;
+}
+.cust-radar-ring.delay1 { animation-delay: 1s; }
+@keyframes radarPulse {
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Shop pins */
+.shop-map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.shop-map-pin-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 2px;
+  background: var(--pin-color, #475569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  border: 3px solid rgba(255,255,255,0.95);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+  transform: rotate(-45deg);
+  transform-origin: 50% 100%;
+}
+.shop-map-pin-circle > * { transform: rotate(45deg); }
+.shop-map-pin-label {
+  background: rgba(15,23,42,0.82);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  letter-spacing: 0.01em;
+}
+
+/* Leaflet popup overrides */
+.leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important; padding: 0 !important; overflow: hidden; }
+.leaflet-popup-content { margin: 0 !important; min-width: 220px; }
+.shop-popup { padding: 14px 16px; font-family: inherit; }
+.shop-popup-name { font-weight: 700; font-size: 0.95rem; color: #0f172a; margin-bottom: 6px; }
+.shop-popup-cat {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.shop-popup-coords {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-family: monospace;
+}
+.shop-popup-row { font-size: 0.78rem; color: #475569; margin-bottom: 4px; line-height: 1.5; }
+.shop-popup-stars { font-size: 1rem; margin: 6px 0 8px; }
+.shop-popup-btn {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, var(--primary), #0369a1);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.shop-popup-btn:hover { opacity: 0.88; }
+
+/* Customer location bar */
+.customer-loc-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #1e40af;
+  font-weight: 500;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+.customer-loc-dot {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  background: #2563eb;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+  animation: radarPulse 2s ease-out infinite;
+}
+
+/* Filter chips */
+.shop-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.shop-filter-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-50);
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.shop-filter-chip:hover { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+.shop-filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Sidebar shop card active highlight */
+.shop-sidebar-card { transition: background 0.15s, border-color 0.15s; }
+.shop-sidebar-card:hover { background: #f0f9ff; border-color: #bae6fd; }
+.shop-sidebar-card.active { background: #eff6ff; border-color: #93c5fd; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+
+/* Shop distance badge */
+.shop-dist-badge {
+  min-width: 44px;
+  text-align: center;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.shop-dist-badge small { font-size: 0.65rem; font-weight: 400; }
+
+@media (max-width: 600px) {
+  .shop-leaflet-map { height: 280px; }
+  .shop-filter-chips { gap: 4px; }
+  .shop-filter-chip { font-size: 0.7rem; padding: 3px 9px; }
+  .customer-loc-bar { font-size: 0.7rem; }
 }

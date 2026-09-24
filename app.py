@@ -2153,6 +2153,102 @@ def list_products():
     return jsonify([dict(r) for r in rows])
 
 
+@app.route('/api/marketplace/shops', methods=['GET'])
+@login_required
+def marketplace_shops():
+    """Return curated nearby shops in Bhopal with lat/lng and distances."""
+    import math
+
+    def haversine(lat1, lng1, lat2, lng2):
+        R = 6371  # Earth radius in km
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lng2 - lng1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        return round(R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 2)
+
+    # Customer reference coordinates (from query params or logged-in user profile)
+    try:
+        cust_lat = float(request.args.get('lat', 0))
+        cust_lng = float(request.args.get('lng', 0))
+    except (TypeError, ValueError):
+        cust_lat = cust_lng = 0
+
+    if not cust_lat and not cust_lng:
+        user = current_user()
+        if user and user['latitude'] and user['longitude']:
+            cust_lat, cust_lng = user['latitude'], user['longitude']
+        else:
+            # Default: MP Nagar, Bhopal
+            cust_lat, cust_lng = 23.2599, 77.4126
+
+    shops = [
+        {
+            'id': 1,
+            'name': 'Bhopal Craft & Carpentry Works',
+            'category': 'Carpentry',
+            'icon': '🪚',
+            'lat': 23.2545,
+            'lng': 77.4082,
+            'address': 'Link Road No. 1, Near Bus Stand, Bhopal - 462003',
+            'phone': '+91 98765 11001',
+            'open_hours': 'Mon–Sat 9am–7pm',
+            'rating': 4.7,
+            'color': '#d97706',
+        },
+        {
+            'id': 2,
+            'name': 'Narmada Plumbing & Sanitary Mart',
+            'category': 'Plumbing',
+            'icon': '🔧',
+            'lat': 23.2642,
+            'lng': 77.4185,
+            'address': 'Zone-II, MP Nagar, Bhopal - 462011',
+            'phone': '+91 98765 22002',
+            'open_hours': 'Mon–Sat 8:30am–8pm',
+            'rating': 4.5,
+            'color': '#0891b2',
+        },
+        {
+            'id': 3,
+            'name': 'Bharat Hardware & Industrial Tools',
+            'category': 'Hardware',
+            'icon': '🧰',
+            'lat': 23.2498,
+            'lng': 77.4265,
+            'address': 'E-4 Arera Colony, Bhopal - 462016',
+            'phone': '+91 98765 33003',
+            'open_hours': 'Mon–Sun 9am–9pm',
+            'rating': 4.8,
+            'color': '#475569',
+        },
+        {
+            'id': 4,
+            'name': 'Malwa Hardware & Plumbing Depot',
+            'category': 'Hardware & Plumbing',
+            'icon': '🛠️',
+            'lat': 23.2688,
+            'lng': 77.4015,
+            'address': '10 No. Market, Shahpura, Bhopal - 462039',
+            'phone': '+91 98765 44004',
+            'open_hours': 'Mon–Sat 9am–7:30pm',
+            'rating': 4.6,
+            'color': '#7c3aed',
+        },
+    ]
+
+    for shop in shops:
+        shop['distance_km'] = haversine(cust_lat, cust_lng, shop['lat'], shop['lng'])
+
+    shops.sort(key=lambda s: s['distance_km'])
+
+    return jsonify({
+        'customer_lat': cust_lat,
+        'customer_lng': cust_lng,
+        'shops': shops,
+    })
+
+
 @app.route('/api/products/my', methods=['GET'])
 @login_required
 @role_required('business')

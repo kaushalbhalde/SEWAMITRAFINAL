@@ -1,28 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marketplace - SEWAMITRA</title>
+  <meta name="description" content="Browse products and discover nearby carpentry, plumbing and hardware shops on the map.">
   <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/leaflet.css">
 </head>
 <body>
   <div id="page"></div>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/leaflet.js"></script>
   <script>
     (async function() {
       const ok = await initPage('market');
       if (!ok) return;
-      const products = await API('products');
-      const nearbyProducts = [...new Map(products.map(product => [product.name.trim().toLowerCase(), product])).values()].slice(0, 10);
+
+      const [products, shopsData] = await Promise.all([
+        API('products'),
+        API('marketplace/shops').catch(() => ({ shops: [], customer_lat: 23.2599, customer_lng: 77.4126 }))
+      ]);
+
+      const nearbyProducts = [...new Map(products.map(p => [p.name.trim().toLowerCase(), p])).values()].slice(0, 10);
       window.marketplaceProducts = nearbyProducts;
-      const demoShops = [
-        { name: 'Bhopal Carpentry Tools', category: 'Carpentry tools', icon: '🪚', distance: '1.2 km away', position: '28% 35%' },
-        { name: 'Narmada Plumbing Mart', category: 'Plumbing tools', icon: '🔧', distance: '2.4 km away', position: '67% 31%' },
-        { name: 'Lakeview Electricals', category: 'Electrical tools', icon: '⚡', distance: '3.1 km away', position: '43% 66%' },
-        { name: 'Bharat Hardware Hub', category: 'Hardware essentials', icon: '🧰', distance: '3.8 km away', position: '76% 70%' }
-      ];
+
+      const shops = shopsData.shops || [];
+      let custLat = shopsData.customer_lat || 23.2599;
+      let custLng = shopsData.customer_lng || 77.4126;
+      let leafletMap = null;
+      let leafletMarkers = [];
 
       document.getElementById('page').innerHTML = `
         <div class="container">
@@ -31,43 +39,53 @@
               <div class="page-title">Marketplace</div>
               <p class="text-muted">Products and services from local businesses in Bhopal, India</p>
             </div>
-            <button class="btn btn-primary cart-trigger" type="button" onclick="openCart()">🛒 Cart <span id="cartCount" class="cart-count">0</span></button>
+            <button class="btn btn-primary cart-trigger" type="button" onclick="openCart()">&#128722; Cart <span id="cartCount" class="cart-count">0</span></button>
           </div>
 
           <div class="marketplace-layout">
             <div class="card market-map-panel">
-              <div class="flex-between mb-12">
-                <h3 class="card-title">Nearby shops</h3>
-                <span class="text-sm text-muted">Bhopal, India</span>
+              <div class="flex-between mb-12" style="flex-wrap:wrap;gap:8px;">
+                <div>
+                  <h3 class="card-title" style="margin:0;">&#128205; Nearby Shops for You</h3>
+                  <p class="text-sm text-muted" style="margin:4px 0 0;">Bhopal, Madhya Pradesh</p>
+                </div>
+                <div class="shop-filter-chips" id="shopFilters">
+                  <button class="shop-filter-chip active" data-filter="all" onclick="filterShops('all')">All (${shops.length})</button>
+                  <button class="shop-filter-chip" data-filter="Carpentry" onclick="filterShops('Carpentry')">&#128388; Carpentry</button>
+                  <button class="shop-filter-chip" data-filter="Plumbing" onclick="filterShops('Plumbing')">&#128295; Plumbing</button>
+                  <button class="shop-filter-chip" data-filter="Hardware" onclick="filterShops('Hardware')">&#129528; Hardware</button>
+                </div>
               </div>
-
-              <div class="market-map-shell">
-                <iframe title="Nearby shops in Bhopal, India" loading="lazy" src="https://www.google.com/maps?q=shops+near+Bhopal,+India&z=13&output=embed"></iframe>
-                ${demoShops.map(shop => `
-                  <div class="market-pin" style="left:${shop.position}" title="${shop.name} - ${shop.category}" aria-label="${shop.name}, ${shop.category}">
-                    <span>${shop.icon}</span>
-                    <small>${shop.name}</small>
-                  </div>
-                `).join('')}
+              <div class="customer-loc-bar" id="custLocBar">
+                <span class="customer-loc-dot"></span>
+                <span id="custLocText">Your location: MP Nagar, Bhopal (${custLat.toFixed(4)}, ${custLng.toFixed(4)})</span>
+                <button class="btn btn-sm btn-secondary" style="margin-left:auto;" onclick="useGPS()">&#128225; Use My GPS</button>
               </div>
-              <div class="market-legend" aria-label="Shop categories">
-                ${demoShops.map(shop => `<span><i></i>${shop.category}</span>`).join('')}
+              <div id="shopMap" class="shop-leaflet-map" aria-label="Map showing nearby shops"></div>
+              <div class="market-legend" style="margin-top:10px;" aria-label="Shop categories">
+                <span><i style="background:#d97706"></i> Carpentry</span>
+                <span><i style="background:#0891b2"></i> Plumbing</span>
+                <span><i style="background:#475569"></i> Hardware</span>
+                <span><i style="background:#7c3aed"></i> Hardware &amp; Plumbing</span>
+                <span><i style="background:#2563eb;border-radius:50%;"></i> You</span>
               </div>
             </div>
+
             <aside class="card market-sidebar">
-              <div class="flex-between">
-                <h3 class="card-title">Shops nearby</h3>
-                <span class="badge badge-open">4 open</span>
+              <div class="flex-between" style="margin-bottom:12px;">
+                <h3 class="card-title" style="margin:0;">Shops Nearby</h3>
+                <span class="badge badge-open" id="shopBadge">${shops.length} open</span>
               </div>
-              <div class="market-mini-list">
-                ${demoShops.map(shop => `
-                  <div class="market-mini-item">
-                    <div class="market-mini-badge online">${shop.icon}</div>
-                    <div>
-                      <strong>${shop.name}</strong>
+              <div class="market-mini-list" id="shopSidebar">
+                ${shops.map(shop => `
+                  <div class="market-mini-item shop-sidebar-card" id="sidebar-shop-${shop.id}" onclick="focusShop(${shop.id})" style="cursor:pointer;">
+                    <div class="market-mini-badge online" style="background:${shop.color}20;font-size:1.3rem;">${shop.icon}</div>
+                    <div style="flex:1;min-width:0;">
+                      <strong style="font-size:0.85rem;">${shop.name}</strong>
                       <div class="text-sm text-muted">${shop.category}</div>
-                      <div class="status-live text-sm">Open · ${shop.distance}</div>
+                      <div class="status-live text-sm">&#11088; ${shop.rating} &middot; ${shop.distance_km} km away</div>
                     </div>
+                    <span class="shop-dist-badge" style="background:${shop.color}15;color:${shop.color};">${shop.distance_km}<br><small>km</small></span>
                   </div>
                 `).join('')}
               </div>
@@ -82,7 +100,7 @@
             <button class="modal-close" type="button" onclick="closeCart()">&times;</button>
             <h2>Your Cart</h2>
             <div id="cartItems"></div>
-            <div class="cart-total-row"><span>Total</span><strong id="cartTotal">₹0</strong></div>
+            <div class="cart-total-row"><span>Total</span><strong id="cartTotal">&#8377;0</strong></div>
             <button class="btn btn-primary btn-block" type="button" onclick="openCheckout()">Continue to payment</button>
           </div>
         </div>
@@ -91,12 +109,12 @@
           <div class="modal cart-modal">
             <button class="modal-close" type="button" onclick="closeCheckout()">&times;</button>
             <h2>Secure checkout</h2>
-            <p class="text-muted mb-16">Choose how you want to pay. Card and UPI are demo payment options.</p>
+            <p class="text-muted mb-16">Choose how you want to pay.</p>
             <form id="checkoutForm">
               <div class="payment-options">
-                <label class="payment-option"><input type="radio" name="paymentMethod" value="wallet" checked> <span>💳 Wallet</span><small>Use your SEWAMITRA balance</small></label>
-                <label class="payment-option"><input type="radio" name="paymentMethod" value="upi"> <span>📱 UPI</span><small>Demo instant payment</small></label>
-                <label class="payment-option"><input type="radio" name="paymentMethod" value="card"> <span>💠 Card</span><small>Demo card payment</small></label>
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="wallet" checked> <span>&#128179; Wallet</span><small>Use your SEWAMITRA balance</small></label>
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="upi"> <span>&#128241; UPI</span><small>Demo instant payment</small></label>
+                <label class="payment-option"><input type="radio" name="paymentMethod" value="card"> <span>&#128160; Card</span><small>Demo card payment</small></label>
               </div>
               <div id="paymentReference" class="form-group hidden">
                 <label id="paymentReferenceLabel">Payment reference</label>
@@ -110,87 +128,164 @@
 
       const el = document.getElementById('productsGrid');
       if (!nearbyProducts.length) {
-        el.innerHTML = '<div class="empty-state"><div class="icon">🏪</div><p>No products available yet.</p></div>';
-        return;
-      }
-      el.innerHTML = `<div class="grid grid-3">` + nearbyProducts.map(p => `
-        <div class="product-card">
-          <div class="product-img">${p.image_url || '📦'}</div>
-          <div class="product-body">
-            <div class="product-name">${p.name}</div>
-            <div class="text-sm text-muted">${p.category || 'General'} · Nearby</div>
-            <div class="product-desc">${p.description || ''}</div>
-            <div class="product-price">${fmtMoney(p.price)}</div>
-            <div class="text-sm text-muted">by ${p.business_name}</div>
-            ${currentUser && currentUser.role !== 'business' ? `
-              <div class="flex-row gap-8 mt-8">
-                <button class="btn btn-sm btn-primary" onclick="addToCart(${p.id})">Add to cart</button>
-                <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>
-              </div>
-            ` : ''}
+        el.innerHTML = '<div class="empty-state"><div class="icon">&#127978;</div><p>No products available yet.</p></div>';
+      } else {
+        el.innerHTML = '<div class="grid grid-3">' + nearbyProducts.map(p => `
+          <div class="product-card">
+            <div class="product-img">${p.image_url || '&#128230;'}</div>
+            <div class="product-body">
+              <div class="product-name">${p.name}</div>
+              <div class="text-sm text-muted">${p.category || 'General'} &middot; Nearby</div>
+              <div class="product-desc">${p.description || ''}</div>
+              <div class="product-price">${fmtMoney(p.price)}</div>
+              <div class="text-sm text-muted">by ${p.business_name}</div>
+              ${currentUser && currentUser.role !== 'business' ? `
+                <div class="flex-row gap-8 mt-8">
+                  <button class="btn btn-sm btn-primary" onclick="addToCart(${p.id})">Add to cart</button>
+                  <button class="btn btn-sm btn-secondary" onclick="window.location.href='/messages.html?uid=${p.business_id}'">Contact</button>
+                </div>
+              ` : ''}
+            </div>
           </div>
-        </div>
-      `).join('') + `</div>`;
+        `).join('') + '</div>';
+      }
       updateCartCount();
-      document.querySelectorAll('input[name="paymentMethod"]').forEach(input => input.addEventListener('change', updatePaymentField));
+      document.querySelectorAll('input[name="paymentMethod"]').forEach(i => i.addEventListener('change', updatePaymentField));
+
+      initLeafletMap(shops, custLat, custLng);
+
+      window.useGPS = function() {
+        if (!navigator.geolocation) { toast('Geolocation not supported', 'error'); return; }
+        navigator.geolocation.getCurrentPosition(async pos => {
+          custLat = pos.coords.latitude;
+          custLng = pos.coords.longitude;
+          toast('Location updated!', 'success');
+          document.getElementById('custLocText').textContent = 'Your location: (' + custLat.toFixed(4) + ', ' + custLng.toFixed(4) + ')';
+          try {
+            const fresh = await API('marketplace/shops?lat=' + custLat + '&lng=' + custLng);
+            shops.length = 0;
+            fresh.shops.forEach(s => shops.push(s));
+            refreshSidebar(shops);
+            initLeafletMap(shops, custLat, custLng);
+          } catch(e) { toast('Could not refresh shop distances', 'error'); }
+        }, () => toast('Could not get GPS location', 'error'));
+      };
+
+      window.filterShops = function(filter) {
+        document.querySelectorAll('.shop-filter-chip').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === filter));
+        const visible = filter === 'all' ? shops : shops.filter(s => s.category.includes(filter));
+        refreshSidebar(visible);
+        leafletMarkers.forEach(({marker, shop}) => {
+          const show = filter === 'all' || shop.category.includes(filter);
+          if (show) marker.addTo(leafletMap);
+          else leafletMap.removeLayer(marker);
+        });
+        document.getElementById('shopBadge').textContent = visible.length + ' open';
+      };
+
+      window.focusShop = function(shopId) {
+        const entry = leafletMarkers.find(e => e.shop.id === shopId);
+        if (!entry) return;
+        leafletMap.flyTo([entry.shop.lat, entry.shop.lng], 16, { duration: 0.8 });
+        setTimeout(() => entry.marker.openPopup(), 850);
+        document.querySelectorAll('.shop-sidebar-card').forEach(c => c.classList.remove('active'));
+        const card = document.getElementById('sidebar-shop-' + shopId);
+        if (card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      };
+
+      function refreshSidebar(visibleShops) {
+        document.getElementById('shopSidebar').innerHTML = visibleShops.map(shop => `
+          <div class="market-mini-item shop-sidebar-card" id="sidebar-shop-${shop.id}" onclick="focusShop(${shop.id})" style="cursor:pointer;">
+            <div class="market-mini-badge online" style="background:${shop.color}20;font-size:1.3rem;">${shop.icon}</div>
+            <div style="flex:1;min-width:0;">
+              <strong style="font-size:0.85rem;">${shop.name}</strong>
+              <div class="text-sm text-muted">${shop.category}</div>
+              <div class="status-live text-sm">&#11088; ${shop.rating} &middot; ${shop.distance_km} km away</div>
+            </div>
+            <span class="shop-dist-badge" style="background:${shop.color}15;color:${shop.color};">${shop.distance_km}<br><small>km</small></span>
+          </div>
+        `).join('');
+      }
+
+      function initLeafletMap(shopList, lat, lng) {
+        if (leafletMap) { leafletMap.remove(); leafletMap = null; leafletMarkers = []; }
+
+        leafletMap = L.map('shopMap', { zoomControl: true, scrollWheelZoom: false }).setView([lat, lng], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
+        }).addTo(leafletMap);
+
+        L.circle([lat, lng], {
+          radius: 3000, color: '#2563eb', fillColor: '#93c5fd', fillOpacity: 0.08, weight: 1.5, dashArray: '6 4'
+        }).addTo(leafletMap);
+
+        const custIcon = L.divIcon({
+          className: '',
+          html: '<div class="cust-radar-pin"><div class="cust-radar-ring"></div><div class="cust-radar-ring delay1"></div><div class="cust-dot"></div></div>',
+          iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -22]
+        });
+        L.marker([lat, lng], { icon: custIcon, zIndexOffset: 1000 })
+          .addTo(leafletMap)
+          .bindPopup('<div class="shop-popup"><div class="shop-popup-name">&#128205; You (Customer)</div><div class="shop-popup-cat" style="background:#2563eb20;color:#2563eb;">Current Location</div><div class="shop-popup-row"><b>Lat:</b> ' + lat.toFixed(4) + '</div><div class="shop-popup-row"><b>Lng:</b> ' + lng.toFixed(4) + '</div><div class="shop-popup-row">3 km delivery radius shown</div></div>');
+
+        leafletMarkers = shopList.map(shop => {
+          const shopIcon = L.divIcon({
+            className: '',
+            html: '<div class="shop-map-pin" style="--pin-color:' + shop.color + ';"><div class="shop-map-pin-circle">' + shop.icon + '</div><div class="shop-map-pin-label">' + shop.name.split(' ').slice(0, 2).join(' ') + '</div></div>',
+            iconSize: [48, 64], iconAnchor: [24, 60], popupAnchor: [0, -62]
+          });
+          const stars = '&#9733;'.repeat(Math.floor(shop.rating));
+          const marker = L.marker([shop.lat, shop.lng], { icon: shopIcon })
+            .addTo(leafletMap)
+            .bindPopup('<div class="shop-popup"><div class="shop-popup-name">' + shop.icon + ' ' + shop.name + '</div><div class="shop-popup-cat" style="background:' + shop.color + '20;color:' + shop.color + ';">' + shop.category + '</div><div class="shop-popup-coords">&#128204; Lat: ' + shop.lat + ' &nbsp;|&nbsp; Lng: ' + shop.lng + '</div><div class="shop-popup-row">&#128207; <b>' + shop.distance_km + ' km</b> away from you</div><div class="shop-popup-row">&#128205; ' + shop.address + '</div><div class="shop-popup-row">&#9200; ' + shop.open_hours + '</div><div class="shop-popup-row">&#128222; ' + shop.phone + '</div><div class="shop-popup-row shop-popup-stars" style="color:' + shop.color + ';">' + stars + ' <span style="color:#64748b;">' + shop.rating + '/5</span></div><a class="shop-popup-btn" href="https://www.google.com/maps/dir/?api=1&destination=' + shop.lat + ',' + shop.lng + '" target="_blank" rel="noopener noreferrer">&#128506; Get Directions</a></div>', { maxWidth: 260 });
+
+          marker.on('click', () => {
+            document.querySelectorAll('.shop-sidebar-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById('sidebar-shop-' + shop.id);
+            if (card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+          });
+          return { marker, shop };
+        });
+      }
+
     })();
 
     let cart = JSON.parse(localStorage.getItem('sewamitra-cart') || '[]');
-
-    function saveCart() {
-      localStorage.setItem('sewamitra-cart', JSON.stringify(cart));
-      updateCartCount();
-    }
-
-    function updateCartCount() {
-      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-      const badge = document.getElementById('cartCount');
-      if (badge) badge.textContent = count;
-    }
-
+    function saveCart() { localStorage.setItem('sewamitra-cart', JSON.stringify(cart)); updateCartCount(); }
+    function updateCartCount() { const b = document.getElementById('cartCount'); if (b) b.textContent = cart.reduce((s, i) => s + i.quantity, 0); }
     function addToCart(productId) {
-      const product = window.marketplaceProducts.find(item => item.id === productId);
+      const product = window.marketplaceProducts.find(i => i.id === productId);
       if (!product) return;
-      const existing = cart.find(item => item.product_id === productId);
+      const existing = cart.find(i => i.product_id === productId);
       if (existing) existing.quantity = Math.min(existing.quantity + 1, product.stock);
       else cart.push({ product_id: product.id, name: product.name, price: product.price, image_url: product.image_url, quantity: 1, stock: product.stock });
       saveCart();
       toast(product.name + ' added to cart', 'success');
     }
-
     function changeCartQuantity(productId, delta) {
-      const item = cart.find(entry => entry.product_id === productId);
+      const item = cart.find(e => e.product_id === productId);
       if (!item) return;
       item.quantity += delta;
-      if (item.quantity < 1) cart = cart.filter(entry => entry.product_id !== productId);
+      if (item.quantity < 1) cart = cart.filter(e => e.product_id !== productId);
       if (item.quantity > item.stock) item.quantity = item.stock;
-      saveCart();
-      renderCart();
+      saveCart(); renderCart();
     }
-
-    function getCartTotal() { return cart.reduce((sum, item) => sum + item.price * item.quantity, 0); }
-
+    function getCartTotal() { return cart.reduce((s, i) => s + i.price * i.quantity, 0); }
     function renderCart() {
       const items = document.getElementById('cartItems');
       const total = document.getElementById('cartTotal');
       if (!items || !total) return;
-      if (!cart.length) items.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>Your cart is empty.</p></div>';
-      else items.innerHTML = cart.map(item => `
-        <div class="cart-item">
-          <div class="market-mini-badge online">${item.image_url || '📦'}</div>
-          <div class="cart-item-info"><strong>${item.name}</strong><span>${fmtMoney(item.price)} each</span></div>
-          <div class="cart-quantity"><button type="button" onclick="changeCartQuantity(${item.product_id}, -1)">−</button><span>${item.quantity}</span><button type="button" onclick="changeCartQuantity(${item.product_id}, 1)">+</button></div>
-        </div>
-      `).join('');
+      if (!cart.length) items.innerHTML = '<div class="empty-state"><div class="icon">&#128722;</div><p>Your cart is empty.</p></div>';
+      else items.innerHTML = cart.map(item => '<div class="cart-item"><div class="market-mini-badge online">' + (item.image_url || '&#128230;') + '</div><div class="cart-item-info"><strong>' + item.name + '</strong><span>' + fmtMoney(item.price) + ' each</span></div><div class="cart-quantity"><button type="button" onclick="changeCartQuantity(' + item.product_id + ', -1)">&#8722;</button><span>' + item.quantity + '</span><button type="button" onclick="changeCartQuantity(' + item.product_id + ', 1)">+</button></div></div>').join('');
       total.textContent = fmtMoney(getCartTotal());
     }
-
     function openCart() { renderCart(); document.getElementById('cartModal').classList.add('active'); }
     function closeCart() { document.getElementById('cartModal').classList.remove('active'); }
     function openCheckout() {
       if (!cart.length) { toast('Add a product before checkout', 'error'); return; }
-      closeCart();
-      document.getElementById('checkoutModal').classList.add('active');
+      closeCart(); document.getElementById('checkoutModal').classList.add('active');
     }
     function closeCheckout() { document.getElementById('checkoutModal').classList.remove('active'); }
     function updatePaymentField() {
@@ -201,21 +296,15 @@
       document.getElementById('paymentReferenceLabel').textContent = method === 'upi' ? 'UPI ID' : 'Cardholder name';
       document.getElementById('paymentReferenceInput').placeholder = method === 'upi' ? 'example@upi' : 'Demo cardholder name';
     }
-
     document.addEventListener('submit', async event => {
       if (event.target.id !== 'checkoutForm') return;
       event.preventDefault();
       const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
       try {
-        const res = await API('orders/checkout', {
-          method: 'POST',
-          body: JSON.stringify({ items: cart.map(item => ({ product_id: item.product_id, quantity: item.quantity })), payment_method: paymentMethod })
-        });
-        cart = [];
-        saveCart();
-        closeCheckout();
+        const res = await API('orders/checkout', { method: 'POST', body: JSON.stringify({ items: cart.map(i => ({ product_id: i.product_id, quantity: i.quantity })), payment_method: paymentMethod }) });
+        cart = []; saveCart(); closeCheckout();
         toast('Payment successful! Order total: ' + fmtMoney(res.total), 'success');
-      } catch (error) { toast(error.message, 'error'); }
+      } catch(error) { toast(error.message, 'error'); }
     });
   </script>
 </body>
