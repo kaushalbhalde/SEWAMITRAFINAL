@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register - SEWAMITRA</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
   <div id="page"></div>
   <script src="/static/js/i18n.js"></script>
@@ -15,10 +17,10 @@
     let categories = [];
     let teamMembers = [{ name: '', email: '', password: '', phone: '', skills: '' }];
 
-    (async function() {
+    (async function () {
       const auth = await checkAuth();
       if (auth.user) { window.location.href = getDashboardUrl(auth.user.role); return; }
-      try { categories = await API('job-categories'); } catch {}
+      try { categories = await API('job-categories'); } catch { }
 
       document.getElementById('page').innerHTML = `
         ${renderNavbar()}
@@ -91,6 +93,26 @@
                 <div class="form-group">
                   <label>Skills / Job Types (select all that apply)</label>
                   <div id="skillPicker" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                </div>
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:1.1rem;">✏️</span> Add Custom Job Type
+                    <span style="font-size:0.78rem;font-weight:400;color:var(--neutral-500);margin-left:4px;">Not in the list? Add it here</span>
+                  </label>
+                  <div id="customJobBox" style="background:linear-gradient(135deg,rgba(13,148,136,0.06),rgba(99,102,241,0.05));border:2px dashed var(--primary);border-radius:14px;padding:14px 16px;">
+                    <div id="customSkillTags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                      <input type="text" id="customJobInput"
+                        placeholder="e.g. Tile Grouting, Solar Panel Cleaning…"
+                        style="flex:1;border-radius:10px;border:1.5px solid var(--neutral-300);padding:9px 14px;font-size:0.9rem;background:white;color:var(--neutral-800);outline:none;transition:border 0.2s;"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomJob();}"
+                        onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--neutral-300)'">
+                      <button type="button" onclick="addCustomJob()"
+                        style="white-space:nowrap;background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;border:none;border-radius:10px;padding:9px 18px;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(13,148,136,0.25);transition:opacity 0.2s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">＋ Add</button>
+                    </div>
+                    <p style="font-size:0.76rem;color:var(--neutral-500);margin-top:8px;">Press <kbd style="background:var(--neutral-200);border-radius:4px;padding:1px 5px;font-size:0.72rem;">Enter</kbd> or click <strong>＋ Add</strong> to save. Click a tag to remove it.</p>
+                  </div>
                 </div>
                 <div class="grid grid-2">
                   <div class="form-group">
@@ -218,6 +240,8 @@
     }
 
     let selectedSkills = [];
+    let customSkills = [];
+
     function renderSkillPicker() {
       const container = document.getElementById('skillPicker');
       if (!container) return;
@@ -230,6 +254,38 @@
       if (selectedSkills.includes(name)) selectedSkills = selectedSkills.filter(s => s !== name);
       else selectedSkills.push(name);
       renderSkillPicker();
+    }
+
+    function addCustomJob() {
+      const input = document.getElementById('customJobInput');
+      if (!input) return;
+      const val = input.value.trim();
+      if (!val) return;
+      if (customSkills.map(s => s.toLowerCase()).includes(val.toLowerCase())) {
+        input.style.borderColor = 'var(--error)';
+        setTimeout(() => input.style.borderColor = 'var(--neutral-300)', 1200);
+        return;
+      }
+      customSkills.push(val);
+      input.value = '';
+      renderCustomSkillTags();
+    }
+
+    function removeCustomJob(name) {
+      customSkills = customSkills.filter(s => s !== name);
+      renderCustomSkillTags();
+    }
+
+    function renderCustomSkillTags() {
+      const container = document.getElementById('customSkillTags');
+      if (!container) return;
+      container.innerHTML = customSkills.map(s =>
+        `<span title="Click to remove" onclick="removeCustomJob('${s.replace(/'/g, "\\'")}')"
+          style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:5px 12px;border-radius:999px;font-size:0.82rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.28);transition:opacity 0.18s;"
+          onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+          ✏️ ${s} <span style="font-size:0.9rem;margin-left:2px;">✕</span>
+        </span>`
+      ).join('');
     }
 
     function toggleBehalf() {
@@ -253,7 +309,8 @@
         data.behalf_details = document.getElementById('behalf_details').value;
       }
       if (selectedRole === 'worker') {
-        data.skills = selectedSkills.join(',');
+        const allSkills = [...selectedSkills, ...customSkills].filter(Boolean);
+        data.skills = allSkills.join(',');
         data.hourly_rate = parseFloat(document.getElementById('hourly_rate').value) || null;
         data.daily_rate = parseFloat(document.getElementById('daily_rate').value) || null;
         data.portfolio = document.getElementById('portfolio').value;
@@ -282,4 +339,5 @@
     });
   </script>
 </body>
+
 </html>
