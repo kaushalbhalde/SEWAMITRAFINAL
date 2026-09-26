@@ -76,7 +76,7 @@
         ${currentUser.role === 'customer' ? `
         <div class="modal-overlay" id="workerNegotiationModal">
           <div class="modal">
-            <button class="modal-close" onclick="closeModal('workerNegotiationModal')">&times;</button>
+            <button type="button" class="modal-close" onclick="closeModal('workerNegotiationModal')">&times;</button>
             <h2>Negotiate Price</h2>
             <p class="text-sm text-muted mb-16">Send an offer to <strong id="negotiationWorkerName"></strong>.</p>
             <form id="workerNegotiationForm">
@@ -149,6 +149,12 @@
       `).join('');
     }
 
+    function getPreferredPriceType(hourlyRate, dailyRate) {
+      if (Number(hourlyRate) > 0) return 'hourly';
+      if (Number(dailyRate) > 0) return 'daily';
+      return 'total';
+    }
+
     function renderWorkers(workers, availableCount) {
       document.getElementById('workerCount').textContent = myLat !== null
         ? `Approximately ${availableCount} suitable worker(s) available nearby`
@@ -158,7 +164,10 @@
         el.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>No workers found in this area. Try expanding the radius.</p></div>';
         return;
       }
-      el.innerHTML = workers.map(w => `
+      el.innerHTML = workers.map(w => {
+        const preferredType = getPreferredPriceType(w.hourly_rate, w.daily_rate);
+        const suggestedRate = preferredType === 'hourly' ? (w.hourly_rate || 0) : preferredType === 'daily' ? (w.daily_rate || 0) : 0;
+        return `
         <div class="card" style="border:1px solid var(--neutral-200);margin-bottom:8px;">
           <div class="flex-between">
             <div>
@@ -173,12 +182,13 @@
             </div>
             <div>
               <button class="btn btn-sm btn-secondary" onclick="window.location.href='/profile.html?uid=${w.id}'">View Profile</button>
-              ${currentUser.role === 'customer' ? `<button class="btn btn-sm btn-primary" onclick="openWorkerNegotiation(${w.id}, '${String(w.name).replace(/'/g, "\\'")}', ${w.hourly_rate || 0}, ${w.daily_rate || 0})">Negotiate Price</button>` : ''}
+              ${currentUser.role === 'customer' ? `<button class="btn btn-sm btn-primary" onclick="openWorkerNegotiation(${w.id}, '${String(w.name).replace(/'/g, "\\'")}', ${suggestedRate}, '${preferredType}')">Negotiate Price</button>` : ''}
               <button class="btn btn-sm btn-primary" onclick="window.location.href='/messages.html?uid=${w.id}'">Message</button>
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     async function renderGoogleMap(jobs, workers) {
@@ -231,21 +241,30 @@
       return window.googleMapsPromise;
     }
 
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.remove('active');
+    }
+
     function openJob(jobId) { window.location.href = '/job-detail.html?id=' + jobId; }
 
     let negotiatingWorkerId = null;
 
-    async function openWorkerNegotiation(workerId, workerName, hourlyRate, dailyRate) {
+    async function openWorkerNegotiation(workerId, workerName, hourlyRate, dailyRate, preferredType) {
       try {
         const jobs = (await API('jobs')).filter(job => job.status === 'open');
         if (!jobs.length) {
           toast('Create an open job before negotiating with a worker.', 'error');
           return;
         }
+        const selectedType = preferredType || getPreferredPriceType(hourlyRate, dailyRate);
+        const suggestedPrice = selectedType === 'hourly' ? (hourlyRate || 0) : selectedType === 'daily' ? (dailyRate || 0) : 0;
+
         negotiatingWorkerId = workerId;
         document.getElementById('negotiationWorkerName').textContent = workerName;
         document.getElementById('negotiationJob').innerHTML = jobs.map(job => `<option value="${job.id}">${job.title}${job.budget ? ' - ' + fmtMoney(job.budget) : ''}</option>`).join('');
-        document.getElementById('workerOfferPrice').value = hourlyRate || dailyRate || '';
+        document.getElementById('workerOfferType').value = selectedType;
+        document.getElementById('workerOfferPrice').value = suggestedPrice || '';
         document.getElementById('workerNegotiationModal').classList.add('active');
       } catch (e) { toast(e.message, 'error'); }
     }

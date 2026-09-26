@@ -126,6 +126,15 @@ class WorkerProfilePhotoTests(unittest.TestCase):
         self.assertEqual(negotiation['proposed_by'], 'customer')
         conn.close()
 
+    def test_worker_negotiation_modal_selects_matching_price_type(self):
+        template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'map.html')
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+
+        self.assertIn('getPreferredPriceType', template)
+        self.assertIn('workerOfferType', template)
+        self.assertIn("document.getElementById('workerOfferType').value = selectedType;", template)
+
     def test_customer_profile_template_hides_quick_details(self):
         template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'profile.html')
         with open(template_path, 'r', encoding='utf-8') as f:
